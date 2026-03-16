@@ -4,9 +4,7 @@ plugins {
 
 android {
     namespace = "com.example.attemptmapp"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.attemptmapp"
@@ -40,6 +38,9 @@ dependencies {
     implementation(libs.constraintlayout)
     implementation(libs.play.services.maps)
     implementation(libs.play.services.location)
+    implementation(libs.okhttp)
+    implementation(libs.gson)
+    implementation(libs.android.maps.utils)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)

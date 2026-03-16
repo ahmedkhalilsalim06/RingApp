@@ -2,10 +2,13 @@ package com.example.attemptmapp;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
@@ -16,12 +19,15 @@ import android.widget.PopupMenu;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.google.android.gms.location.CurrentLocationRequest;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -30,10 +36,22 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.maps.android.PolyUtil;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
@@ -46,6 +64,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private EditText etSearch;
     private Button btnSearch, btnMyLocation, btnZoomIn, btnZoomOut, btnMapType;
     private Marker activeMarker;
+    
+    private Polyline currentPolyline;
+    private final OkHttpClient httpClient = new OkHttpClient();
+    private String travelMode = "driving";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -104,16 +126,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
         mMap = googleMap;
-
-        // Basic settings
-        mMap.getUiSettings().setZoomControlsEnabled(false); // We use custom buttons
+        mMap.getUiSettings().setZoomControlsEnabled(false);
         mMap.getUiSettings().setMyLocationButtonEnabled(false);
 
         enableLocationOnMap();
 
         mMap.setOnMapClickListener(latLng -> dropPin(latLng, "Dropped Pin", getAddressFromLatLng(latLng)));
-
-        // Move to current location once map is ready
         goToMyLocation();
     }
 
@@ -147,6 +165,31 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 if (location != null) {
                     LatLng myPos = new LatLng(location.getLatitude(), location.getLongitude());
                     mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(myPos, DEFAULT_ZOOM));
+                } else {
+                    requestCurrentLocation(null);
+                }
+            });
+        } catch (SecurityException e) { e.printStackTrace(); }
+    }
+
+    private void requestCurrentLocation(LatLng destinationToRoute) {
+        if (!locationPermissionGranted()) return;
+
+        try {
+            CurrentLocationRequest request = new CurrentLocationRequest.Builder()
+                    .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+                    .build();
+
+            locationClient.getCurrentLocation(request, null).addOnSuccessListener(location -> {
+                if (location != null) {
+                    LatLng myPos = new LatLng(location.getLatitude(), location.getLongitude());
+                    if (destinationToRoute == null) {
+                        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(myPos, DEFAULT_ZOOM));
+                    } else {
+                        fetchRoute(myPos, destinationToRoute);
+                    }
+                } else {
+                    Toast.makeText(this, "Location fix failed. Ensure GPS is on in emulator controls.", Toast.LENGTH_LONG).show();
                 }
             });
         } catch (SecurityException e) { e.printStackTrace(); }
@@ -160,20 +203,140 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .snippet(snippet)
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
         if (activeMarker != null) activeMarker.showInfoWindow();
+        
+        calculateDirections(position);
+    }
+
+    private void calculateDirections(LatLng destination) {
+        if (!locationPermissionGranted()) return;
+
+        try {
+            locationClient.getLastLocation().addOnSuccessListener(location -> {
+                if (location != null) {
+                    LatLng origin = new LatLng(location.getLatitude(), location.getLongitude());
+                    fetchRoute(origin, destination);
+                } else {
+                    requestCurrentLocation(destination);
+                }
+            });
+        } catch (SecurityException e) { e.printStackTrace(); }
+    }
+
+    private String getApiKey() {
+        try {
+            ApplicationInfo ai = getPackageManager().getApplicationInfo(getPackageName(), PackageManager.GET_META_DATA);
+            Bundle bundle = ai.metaData;
+            return bundle.getString("com.google.android.geo.API_KEY");
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private void fetchRoute(LatLng origin, LatLng dest) {
+        String apiKey = getApiKey();
+        if (apiKey == null) {
+            Toast.makeText(this, "API Key not found in Manifest", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String url = "https://maps.googleapis.com/maps/api/directions/json?" +
+                "origin=" + origin.latitude + "," + origin.longitude +
+                "&destination=" + dest.latitude + "," + dest.longitude +
+                "&mode=" + travelMode +
+                "&key=" + apiKey;
+
+        Request request = new Request.Builder().url(url).build();
+        httpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                runOnUiThread(() -> Toast.makeText(MainActivity.this, "Network error", Toast.LENGTH_SHORT).show());
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                if (response.isSuccessful()) {
+                    try {
+                        String jsonData = response.body().string();
+                        JSONObject jsonObject = new JSONObject(jsonData);
+                        
+                        String status = jsonObject.getString("status");
+                        if (!status.equals("OK")) {
+                            String errorMsg = "API Error: " + status;
+                            if (jsonObject.has("error_message")) {
+                                errorMsg += "\n\nDetails: " + jsonObject.getString("error_message");
+                            }
+                            final String finalMsg = errorMsg;
+                            runOnUiThread(() -> {
+                                new AlertDialog.Builder(MainActivity.this)
+                                        .setTitle("Google Maps Error")
+                                        .setMessage(finalMsg)
+                                        .setPositiveButton("How to fix?", (dialog, which) -> {
+                                            new AlertDialog.Builder(MainActivity.this)
+                                                .setMessage("1. Go to Google Cloud Console.\n2. Disable 'Application Restrictions' (SHA-1) for this key.\n3. Enable 'Directions API'.")
+                                                .show();
+                                        })
+                                        .setNegativeButton("Close", null)
+                                        .show();
+                            });
+                            return;
+                        }
+
+                        JSONArray routes = jsonObject.getJSONArray("routes");
+                        if (routes.length() > 0) {
+                            JSONObject route = routes.getJSONObject(0);
+                            JSONObject legs = route.getJSONArray("legs").getJSONObject(0);
+                            String duration = legs.getJSONObject("duration").getString("text");
+                            String distance = legs.getJSONObject("distance").getString("text");
+                            
+                            String points = route.getJSONObject("overview_polyline").getString("points");
+                            List<LatLng> path = PolyUtil.decode(points);
+
+                            runOnUiThread(() -> {
+                                if (currentPolyline != null) currentPolyline.remove();
+                                currentPolyline = mMap.addPolyline(new PolylineOptions()
+                                        .addAll(path)
+                                        .color(Color.BLUE)
+                                        .width(12));
+                                
+                                Toast.makeText(MainActivity.this, 
+                                    "Mode: " + travelMode + " | Time: " + duration + " (" + distance + ")", 
+                                    Toast.LENGTH_LONG).show();
+                            });
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
     }
 
     private void showMapTypePopup(View anchor) {
         PopupMenu popup = new PopupMenu(this, anchor);
-        popup.getMenu().add(0, 1, 0, "Normal");
-        popup.getMenu().add(0, 2, 0, "Satellite");
-        popup.getMenu().add(0, 3, 0, "Terrain");
+        popup.getMenu().add(0, 1, 0, "Normal Map");
+        popup.getMenu().add(0, 2, 0, "Satellite Map");
+        popup.getMenu().add(0, 3, 0, "Terrain Map");
+        popup.getMenu().add(0, 4, 0, "--- Travel Mode ---").setEnabled(false);
+        popup.getMenu().add(0, 5, 0, "🚗 Driving");
+        popup.getMenu().add(0, 6, 0, "🚶 Walking");
+
         popup.setOnMenuItemClickListener(item -> {
-            if (item.getItemId() == 1) mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
-            else if (item.getItemId() == 2) mMap.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
-            else if (item.getItemId() == 3) mMap.setMapType(GoogleMap.MAP_TYPE_TERRAIN);
+            switch (item.getItemId()) {
+                case 1: mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL); break;
+                case 2: mMap.setMapType(GoogleMap.MAP_TYPE_SATELLITE); break;
+                case 3: mMap.setMapType(GoogleMap.MAP_TYPE_TERRAIN); break;
+                case 5: travelMode = "driving"; refreshRouteIfActive(); break;
+                case 6: travelMode = "walking"; refreshRouteIfActive(); break;
+            }
             return true;
         });
         popup.show();
+    }
+
+    private void refreshRouteIfActive() {
+        if (activeMarker != null) {
+            calculateDirections(activeMarker.getPosition());
+        }
     }
 
     private String getAddressFromLatLng(LatLng latLng) {
@@ -191,7 +354,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void askForLocationPermission() {
         if (!locationPermissionGranted()) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, PERMISSION_REQUEST_CODE);
+            ActivityCompat.requestPermissions(this, 
+                new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 
+                PERMISSION_REQUEST_CODE);
         }
     }
 
