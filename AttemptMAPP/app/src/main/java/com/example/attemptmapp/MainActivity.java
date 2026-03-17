@@ -44,8 +44,11 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Random;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -69,6 +72,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private final OkHttpClient httpClient = new OkHttpClient();
     private String travelMode = "driving";
 
+    // Data for Bilkent Bus Stops
+    private final Map<String, String[]> stopBusesMap = new HashMap<>();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -76,6 +82,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         locationClient = LocationServices.getFusedLocationProviderClient(this);
 
+        initBusData();
         bindViews();
         setupButtons();
 
@@ -87,6 +94,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
         askForLocationPermission();
+    }
+
+    private void initBusData() {
+        stopBusesMap.put("Main Entrance Stop", new String[]{"Tunus Shuttle", "Sihhiye Shuttle", "Ring 1", "Ring 2"});
+        stopBusesMap.put("Library Stop", new String[]{"Ring 1", "Ring 2", "East Campus Shuttle"});
+        stopBusesMap.put("EA Building Stop", new String[]{"Ring 1", "Ring 2"});
+        stopBusesMap.put("FADA Stop", new String[]{"Ring 1", "Ring 2"});
+        stopBusesMap.put("Music Building Stop", new String[]{"Ring 1"});
+        stopBusesMap.put("Dorm 76 Stop", new String[]{"Ring 1", "Ring 2"});
+        stopBusesMap.put("Dorm 90 Stop", new String[]{"Ring 1", "Ring 2"});
+        stopBusesMap.put("East Campus Stop", new String[]{"East Campus Shuttle", "Tunus (East)", "Sihhiye (East)"});
     }
 
     private void bindViews() {
@@ -132,7 +150,78 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         enableLocationOnMap();
 
         mMap.setOnMapClickListener(latLng -> dropPin(latLng, "Dropped Pin", getAddressFromLatLng(latLng)));
+        
+        // Add Bilkent Bus Stops
+        addBilkentBusStops();
+        
         goToMyLocation();
+    }
+
+    private void addBilkentBusStops() {
+        LatLng[] stops = {
+            new LatLng(39.86657, 32.74831), // Main Entrance
+            new LatLng(39.87095, 32.75014), // Rectorate/Library
+            new LatLng(39.87216, 32.74913), // EA Building
+            new LatLng(39.86975, 32.74895), // FADA
+            new LatLng(39.86812, 32.74783), // Music Building
+            new LatLng(39.86484, 32.74750), // Dorm 76
+            new LatLng(39.86315, 32.74198), // Dorm 90
+            new LatLng(39.87648, 32.76480)  // East Campus
+        };
+
+        String[] names = {
+            "Main Entrance Stop", "Library Stop", "EA Building Stop",
+            "FADA Stop", "Music Building Stop", "Dorm 76 Stop",
+            "Dorm 90 Stop", "East Campus Stop"
+        };
+
+        for (int i = 0; i < stops.length; i++) {
+            mMap.addMarker(new MarkerOptions()
+                .position(stops[i])
+                .title(names[i])
+                .snippet("Bilkent University Bus Stop")
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW)));
+        }
+
+        mMap.setOnMarkerClickListener(marker -> {
+            String title = marker.getTitle();
+            if (title != null && title.contains("Stop")) {
+                showBusListDialog(title);
+                return true;
+            }
+            
+            // Default behavior for other markers
+            marker.showInfoWindow();
+            if (marker.equals(activeMarker)) {
+                calculateDirections(marker.getPosition());
+            }
+            return false;
+        });
+    }
+
+    private void showBusListDialog(String stopName) {
+        String[] buses = stopBusesMap.get(stopName);
+        if (buses == null) {
+            Toast.makeText(this, "No bus data for " + stopName, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Generate simulated arrival times for each bus
+        String[] displayItems = new String[buses.length];
+        Random random = new Random();
+        for (int i = 0; i < buses.length; i++) {
+            int arrivalInMinutes = random.nextInt(20) + 1; // 1 to 20 minutes
+            displayItems[i] = buses[i] + " - Arriving in " + arrivalInMinutes + " min";
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Buses at " + stopName);
+        builder.setItems(displayItems, (dialog, which) -> {
+            String selectedBus = buses[which];
+            Toast.makeText(MainActivity.this, "Tracking " + selectedBus + "...", Toast.LENGTH_SHORT).show();
+        });
+        builder.setNegativeButton("Close", null);
+        builder.show();
     }
 
     private void searchForLocation(String query) {
