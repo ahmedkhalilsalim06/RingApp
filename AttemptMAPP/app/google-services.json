@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "94968411374",
+    "project_id": "bilkent-bus-tracker",
+    "storage_bucket": "bilkent-bus-tracker.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:94968411374:android:90d3065db82e6681866fff",
+        "android_client_info": {
+          "package_name": "com.example.attemptmapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCj_atICx42M2PcgNYy-JCSYZvFBrn0oSg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
