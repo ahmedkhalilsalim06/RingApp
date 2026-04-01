@@ -38,11 +38,6 @@
             android:name=".MainActivity"
             android:exported="false" />
 
-        <activity
-            android:name=".Settings"
-            android:exported="false"
-            android:label="Settings" />
-
     </application>
 
 </manifest>

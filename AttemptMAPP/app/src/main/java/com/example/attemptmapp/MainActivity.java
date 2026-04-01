@@ -2,6 +2,8 @@ package com.example.attemptmapp;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -16,7 +18,6 @@ import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.Toast;
 
@@ -74,9 +75,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private GoogleMap mMap;
     private FusedLocationProviderClient locationClient;
 
-    private EditText etSearch, etLoginCode;
-    private Button btnSearch, btnMyLocation, btnZoomIn, btnZoomOut, btnMapType, btnLogin;
-    private LinearLayout loginLayout;
+    private EditText etSearch;
+    private Button btnSearch, btnMyLocation, btnZoomIn, btnZoomOut, btnMapType, btnSettings;
     private Marker activeMarker;
     
     private Polyline currentPolyline;
@@ -92,6 +92,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private final Handler trackerHandler = new Handler();
     private Runnable trackerRunnable;
     private boolean isMapReady = false;
+
+    // Bilkent University Coordinates (Main Campus)
+    private final LatLng BILKENT_UNIVERSITY = new LatLng(39.8682, 32.7487);
 
     // Stop Coordinates
     private final LatLng STOP_MAIN = new LatLng(39.86657, 32.74831);
@@ -115,6 +118,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
+        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+        userRole = prefs.getString("userRole", "");
+        
+        if (userRole.isEmpty()) {
+            startActivity(new Intent(this, LoginActivity.class));
+            finish();
+            return;
+        }
+
         setContentView(R.layout.activity_main);
         
         try {
@@ -137,32 +150,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         locationClient = LocationServices.getFusedLocationProviderClient(this);
         initBusData();
         bindViews();
-        setupLogin();
         setupButtons();
         
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.mapFragment);
         if (mapFragment != null) mapFragment.getMapAsync(this);
         askForLocationPermission();
-    }
 
-    private void setupLogin() {
-        btnLogin.setOnClickListener(v -> {
-            hideKeyboard();
-            String code = etLoginCode.getText().toString().trim().toLowerCase();
-            if (code.equals("student") || code.startsWith("driver_")) {
-                userRole = code;
-                loginLayout.setVisibility(View.GONE);
-                
-                if (userRole.startsWith("driver_")) {
-                    startDriverTracking();
-                } else {
-                    startStudentListening();
-                }
-                Toast.makeText(this, "Welcome " + userRole.toUpperCase(), Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(this, "Use 'student' or 'driver_ring1'", Toast.LENGTH_SHORT).show();
-            }
-        });
+        if (userRole.startsWith("driver_")) {
+            startDriverTracking();
+        } else {
+            startStudentListening();
+        }
     }
 
     private void startDriverTracking() {
@@ -281,7 +279,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         etSearch = findViewById(R.id.etSearch); btnSearch = findViewById(R.id.btnSearch);
         btnMyLocation = findViewById(R.id.btnMyLocation); btnZoomIn = findViewById(R.id.btnZoomIn);
         btnZoomOut = findViewById(R.id.btnZoomOut); btnMapType = findViewById(R.id.btnMapType);
-        loginLayout = findViewById(R.id.loginLayout); etLoginCode = findViewById(R.id.etLoginCode); btnLogin = findViewById(R.id.btnLogin);
+        btnSettings = findViewById(R.id.btnSettings);
     }
 
     private void setupButtons() {
@@ -290,6 +288,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         btnZoomIn.setOnClickListener(v -> { if (mMap != null) mMap.animateCamera(CameraUpdateFactory.zoomIn()); });
         btnZoomOut.setOnClickListener(v -> { if (mMap != null) mMap.animateCamera(CameraUpdateFactory.zoomOut()); });
         btnMapType.setOnClickListener(this::showMapTypePopup);
+        btnSettings.setOnClickListener(v -> {
+            startActivity(new Intent(MainActivity.this, Settings.class));
+        });
     }
 
     @Override
@@ -299,7 +300,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         enableLocationOnMap();
         mMap.setOnMapClickListener(latLng -> dropPin(latLng, "Dropped Pin", getAddressFromLatLng(latLng)));
         addBilkentBusStops();
-        goToMyLocation();
+        
+        // Always spawn at Bilkent University
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(BILKENT_UNIVERSITY, DEFAULT_ZOOM));
+        
         if (userRole.equals("student")) startStudentListening();
     }
 
@@ -426,14 +430,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private void hideKeyboard() {
         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
         View view = getCurrentFocus();
-        if (view == null) view = etLoginCode; 
-        if (imm != null) imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
-        view.clearFocus();
+        if (view != null && imm != null) {
+            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+            view.clearFocus();
+        }
     }
 
     @Override public void onRequestPermissionsResult(int r, @NonNull String[] p, @NonNull int[] g) { 
         super.onRequestPermissionsResult(r, p, g);
-        if (r == PERMISSION_REQUEST_CODE && g.length > 0 && g[0] == PackageManager.PERMISSION_GRANTED) { enableLocationOnMap(); goToMyLocation(); } 
+        if (r == PERMISSION_REQUEST_CODE && g.length > 0 && g[0] == PackageManager.PERMISSION_GRANTED) { enableLocationOnMap(); }
     }
     
     @Override protected void onDestroy() { 
