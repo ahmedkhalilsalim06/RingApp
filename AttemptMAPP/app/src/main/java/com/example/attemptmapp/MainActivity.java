@@ -13,6 +13,7 @@ import android.location.Address;
 import android.location.Geocoder;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
@@ -58,6 +59,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -74,6 +77,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private GoogleMap mMap;
     private FusedLocationProviderClient locationClient;
+    private final ExecutorService executorService = Executors.newFixedThreadPool(2);
 
     private EditText etSearch;
     private Button btnSearch, btnMyLocation, btnZoomIn, btnZoomOut, btnMapType, btnSettings;
@@ -89,7 +93,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private DatabaseReference dbRef;
     private String userRole = "";
     private final Map<String, Marker> busMarkers = new HashMap<>();
-    private final Handler trackerHandler = new Handler();
+    private final Handler trackerHandler = new Handler(Looper.getMainLooper());
     private Runnable trackerRunnable;
     private boolean isMapReady = false;
 
@@ -297,12 +301,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onMapReady(@NonNull GoogleMap googleMap) {
         mMap = googleMap; isMapReady = true;
         mMap.getUiSettings().setZoomControlsEnabled(false);
+        mMap.getUiSettings().setMyLocationButtonEnabled(false);
         enableLocationOnMap();
-        mMap.setOnMapClickListener(latLng -> dropPin(latLng, "Dropped Pin", getAddressFromLatLng(latLng)));
+        
+        mMap.setOnMapClickListener(latLng -> {
+            executorService.execute(() -> {
+                String address = getAddressFromLatLng(latLng);
+                runOnUiThread(() -> dropPin(latLng, "Dropped Pin", address));
+            });
+        });
+        
         addBilkentBusStops();
         
-        // Always spawn at Bilkent University
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(BILKENT_UNIVERSITY, DEFAULT_ZOOM));
+        // Initial position is handled by XML map:camera... attributes for faster load.
         
         if (userRole.equals("student")) startStudentListening();
     }
@@ -372,14 +383,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private void searchForLocation(String q) { 
         if (q.isEmpty()) return; 
         hideKeyboard(); 
-        try { 
-            List<Address> r = new Geocoder(this, Locale.getDefault()).getFromLocationName(q, 1); 
-            if (r != null && !r.isEmpty()) { 
-                LatLng p = new LatLng(r.get(0).getLatitude(), r.get(0).getLongitude()); 
-                dropPin(p, q, r.get(0).getAddressLine(0)); 
-                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(p, DEFAULT_ZOOM)); 
-            } 
-        } catch (IOException ignored) {} 
+        executorService.execute(() -> {
+            try { 
+                List<Address> r = new Geocoder(this, Locale.getDefault()).getFromLocationName(q, 1); 
+                if (r != null && !r.isEmpty()) { 
+                    LatLng p = new LatLng(r.get(0).getLatitude(), r.get(0).getLongitude()); 
+                    String address = r.get(0).getAddressLine(0);
+                    runOnUiThread(() -> {
+                        dropPin(p, q, address); 
+                        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(p, DEFAULT_ZOOM)); 
+                    });
+                } 
+            } catch (IOException ignored) {} 
+        });
     }
 
     private void goToMyLocation() { 
@@ -422,7 +438,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         p.show(); 
     }
 
-    private String getAddressFromLatLng(LatLng l) { try { List<Address> adds = new Geocoder(this, Locale.getDefault()).getFromLocation(l.latitude, l.longitude, 1); if (adds != null && !adds.isEmpty()) return adds.get(0).getAddressLine(0); } catch (Exception e) { return "Unknown"; } return "Unknown"; }
+    private String getAddressFromLatLng(LatLng l) { 
+        try { 
+            List<Address> adds = new Geocoder(this, Locale.getDefault()).getFromLocation(l.latitude, l.longitude, 1); 
+            if (adds != null && !adds.isEmpty()) return adds.get(0).getAddressLine(0); 
+        } catch (Exception e) { 
+            return "Unknown"; 
+        } 
+        return "Unknown"; 
+    }
+
     private boolean locationPermissionGranted() { return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED; }
     private void askForLocationPermission() { ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, PERMISSION_REQUEST_CODE); }
     private void enableLocationOnMap() { if (mMap != null && locationPermissionGranted()) { try { mMap.setMyLocationEnabled(true); } catch (SecurityException ignored) {} } }
@@ -438,11 +463,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override public void onRequestPermissionsResult(int r, @NonNull String[] p, @NonNull int[] g) { 
         super.onRequestPermissionsResult(r, p, g);
-        if (r == PERMISSION_REQUEST_CODE && g.length > 0 && g[0] == PackageManager.PERMISSION_GRANTED) { enableLocationOnMap(); }
+        if (r == PERMISSION_REQUEST_CODE && g.length > 0 && g[0] == PackageManager.PERMISSION_GRANTED) { enableLocationOnMap(); } 
     }
     
     @Override protected void onDestroy() { 
         super.onDestroy(); 
         if (trackerHandler != null && trackerRunnable != null) trackerHandler.removeCallbacks(trackerRunnable); 
+        executorService.shutdown();
     }
 }

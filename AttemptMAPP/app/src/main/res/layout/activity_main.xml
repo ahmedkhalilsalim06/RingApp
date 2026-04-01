@@ -2,24 +2,28 @@
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:map="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <!-- MAP (fills whole screen) -->
+    <!-- MAP (Configured with initial camera for faster loading) -->
     <fragment
         android:id="@+id/mapFragment"
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        map:cameraTargetLat="39.8682"
+        map:cameraTargetLng="32.7487"
+        map:cameraZoom="15"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- SEARCH BAR on top of map -->
+    <!-- SEARCH BAR -->
     <LinearLayout
         android:id="@+id/searchBar"
         android:layout_width="0dp"
@@ -59,7 +63,7 @@
 
     </LinearLayout>
 
-    <!-- BUTTONS on right side -->
+    <!-- UI BUTTONS -->
     <LinearLayout
         android:id="@+id/rightButtons"
         android:layout_width="wrap_content"
@@ -71,7 +75,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- My Location -->
         <Button
             android:id="@+id/btnMyLocation"
             android:layout_width="48dp"
@@ -85,7 +88,6 @@
             android:layout_height="1dp"
             android:background="#E0E0E0" />
 
-        <!-- Zoom In -->
         <Button
             android:id="@+id/btnZoomIn"
             android:layout_width="48dp"
@@ -101,7 +103,6 @@
             android:layout_height="1dp"
             android:background="#E0E0E0" />
 
-        <!-- Zoom Out -->
         <Button
             android:id="@+id/btnZoomOut"
             android:layout_width="48dp"
@@ -114,7 +115,6 @@
 
     </LinearLayout>
 
-    <!-- MAP TYPE BUTTON bottom left -->
     <Button
         android:id="@+id/btnMapType"
         android:layout_width="wrap_content"
@@ -129,7 +129,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
-    <!-- SETTINGS BUTTON top left below search -->
     <Button
         android:id="@+id/btnSettings"
         android:layout_width="wrap_content"
