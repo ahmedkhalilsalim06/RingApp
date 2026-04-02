@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AttemptMAPP</string>
+    <string name="settings">Ayarlar</string>
+    <string name="notifications">Bildirimler</string>
+    <string name="bus_alerts">Otobüs Saat Uyarıları</string>
+    <string name="account_info">Hesap Bilgileri</string>
+    <string name="email">E-posta</string>
+    <string name="password">Şifre</string>
+    <string name="change">Değiştir</string>
+    <string name="app_theme">Uygulama Teması</string>
+    <string name="light">Açık</string>
+    <string name="dark">Koyu</string>
+    <string name="language">Dil</string>
+    <string name="privacy_policy">Gizlilik Politikası</string>
+    <string name="about_app">Uygulama Hakkında</string>
+    <string name="logout">Çıkış Yap</string>
+    <string name="back_to_map">Haritaya Dön</string>
+</resources>

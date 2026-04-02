@@ -4,92 +4,229 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp"
-    android:background="#F5F5F5">
+    android:background="?android:attr/windowBackground">
 
-    <LinearLayout
+    <!-- Header -->
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginBottom="24dp">
+        android:layout_height="60dp"
+        android:background="#001F3F"
+        android:padding="12dp">
+
+        <ImageButton
+            android:id="@+id/btnBackToMap"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_back_white"
+            android:layout_centerVertical="true"
+            android:contentDescription="@string/back_to_map"/>
 
         <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Settings"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:textColor="#000000"/>
-
-        <Button
-            android:id="@+id/btnBackToMap"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Back to Map"
-            android:backgroundTint="#4285F4"
-            android:textColor="#FFFFFF" />
-    </LinearLayout>
+            android:text="@string/settings"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_centerInParent="true"/>
+    </RelativeLayout>
 
-    <androidx.cardview.widget.CardView
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        app:cardCornerRadius="8dp"
-        app:cardElevation="2dp">
+        android:layout_height="0dp"
+        android:layout_weight="1">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:padding="20dp">
 
+            <!-- Notifications Section -->
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Profile Information"
+                android:text="@string/notifications"
+                android:textSize="18sp"
                 android:textStyle="bold"
-                android:textColor="#4285F4"
-                android:layout_marginBottom="8dp"/>
+                android:textColor="?android:attr/textColorPrimary"
+                android:layout_marginBottom="12dp"/>
 
-            <TextView
-                android:id="@+id/tvSettingsName"
-                android:layout_width="wrap_content"
+            <RelativeLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Name: "
+                android:layout_marginBottom="24dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/bus_alerts"
+                    android:textSize="16sp"
+                    android:textColor="?android:attr/textColorSecondary"/>
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switchNotifications"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:checked="true"/>
+            </RelativeLayout>
+
+            <!-- Account Info Section -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/account_info"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="?android:attr/textColorPrimary"
+                android:layout_marginBottom="12dp"/>
+
+            <!-- Email Row -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp">
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/email"
+                        android:textStyle="bold"
+                        android:textColor="?android:attr/textColorPrimary"/>
+                    <TextView
+                        android:id="@+id/tvSettingsEmail"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="user@example.com"
+                        android:textColor="?android:attr/textColorSecondary"/>
+                </LinearLayout>
+                <TextView
+                    android:id="@+id/btnChangeEmail"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/change"
+                    android:textColor="#4285F4"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"/>
+            </RelativeLayout>
+
+            <!-- Password Row -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp">
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/password"
+                        android:textStyle="bold"
+                        android:textColor="?android:attr/textColorPrimary"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="**********"
+                        android:textColor="?android:attr/textColorSecondary"/>
+                </LinearLayout>
+                <TextView
+                    android:id="@+id/btnChangePassword"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/change"
+                    android:textColor="#4285F4"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"/>
+            </RelativeLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#DDDDDD"
+                android:layout_marginBottom="24dp"/>
+
+            <!-- App Theme Section -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/app_theme"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="?android:attr/textColorPrimary"
+                android:layout_marginBottom="12dp"/>
+
+            <RadioGroup
+                android:id="@+id/rgTheme"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="24dp">
+                <RadioButton
+                    android:id="@+id/rbLight"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/light"
+                    android:textColor="?android:attr/textColorPrimary"
+                    android:layout_marginEnd="20dp"/>
+                <RadioButton
+                    android:id="@+id/rbDark"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/dark"
+                    android:textColor="?android:attr/textColorPrimary"/>
+            </RadioGroup>
+
+            <!-- Language Section -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/language"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="?android:attr/textColorPrimary"
+                android:layout_marginBottom="12dp"/>
+
+            <Spinner
+                android:id="@+id/spinnerLanguage"
+                android:layout_width="150dp"
+                android:layout_height="40dp"
+                android:background="@android:drawable/btn_dropdown"
+                android:layout_marginBottom="32dp"/>
+
+            <!-- Links -->
+            <TextView
+                android:id="@+id/btnPrivacyPolicy"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:text="@string/privacy_policy"
+                android:gravity="center_vertical"
                 android:textSize="16sp"
-                android:layout_marginBottom="4dp"/>
+                android:textColor="?android:attr/textColorPrimary"/>
 
             <TextView
-                android:id="@+id/tvSettingsEmail"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Email: "
+                android:id="@+id/btnAbout"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:text="@string/about_app"
+                android:gravity="center_vertical"
                 android:textSize="16sp"
-                android:layout_marginBottom="4dp"/>
+                android:textColor="?android:attr/textColorPrimary"/>
 
-            <TextView
-                android:id="@+id/tvSettingsRole"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Role: "
-                android:textSize="16sp"/>
         </LinearLayout>
-    </androidx.cardview.widget.CardView>
-
-    <!-- Spacer to push the logout button to the bottom -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
+    </ScrollView>
 
     <Button
         android:id="@+id/btnSettingsLogout"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Logout"
+        android:layout_height="55dp"
+        android:text="@string/logout"
         android:backgroundTint="#FF4444"
-        android:textColor="#FFFFFF" />
+        android:textColor="#FFFFFF"
+        android:layout_margin="16dp"/>
 
 </LinearLayout>

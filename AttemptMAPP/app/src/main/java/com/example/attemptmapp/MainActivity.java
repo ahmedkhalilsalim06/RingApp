@@ -17,9 +17,8 @@ import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.Button;
 import android.widget.EditText;
-import android.widget.PopupMenu;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -28,10 +27,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.google.android.gms.location.CurrentLocationRequest;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.location.Priority;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -80,7 +77,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private final ExecutorService executorService = Executors.newFixedThreadPool(2);
 
     private EditText etSearch;
-    private Button btnSearch, btnMyLocation, btnZoomIn, btnZoomOut, btnMapType, btnSettings;
+    private ImageButton btnSettings, btnHome, btnFavorites;
     private Marker activeMarker;
     
     private Polyline currentPolyline;
@@ -174,17 +171,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             @Override
             public void run() {
                 if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                    CurrentLocationRequest request = new CurrentLocationRequest.Builder().setPriority(Priority.PRIORITY_HIGH_ACCURACY).build();
-                    locationClient.getCurrentLocation(request, null).addOnSuccessListener(location -> {
+                    locationClient.getLastLocation().addOnSuccessListener(location -> {
                         if (location != null) {
                             Map<String, Object> map = new HashMap<>();
                             map.put("lat", location.getLatitude());
                             map.put("lng", location.getLongitude());
                             map.put("timestamp", System.currentTimeMillis());
-                            dbRef.child(userRole).setValue(map).addOnCompleteListener(task -> {
-                                if (task.isSuccessful()) Log.d(TAG, "Write OK: " + location.getLatitude());
-                                else Log.e(TAG, "Write FAIL: " + task.getException());
-                            });
+                            dbRef.child(userRole).setValue(map);
                         }
                     });
                 }
@@ -280,28 +273,35 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void bindViews() {
-        etSearch = findViewById(R.id.etSearch); btnSearch = findViewById(R.id.btnSearch);
-        btnMyLocation = findViewById(R.id.btnMyLocation); btnZoomIn = findViewById(R.id.btnZoomIn);
-        btnZoomOut = findViewById(R.id.btnZoomOut); btnMapType = findViewById(R.id.btnMapType);
+        etSearch = findViewById(R.id.etSearch);
+        btnHome = findViewById(R.id.btnHome);
+        btnFavorites = findViewById(R.id.btnFavorites);
         btnSettings = findViewById(R.id.btnSettings);
     }
 
     private void setupButtons() {
-        btnSearch.setOnClickListener(v -> searchForLocation(etSearch.getText().toString().trim()));
-        btnMyLocation.setOnClickListener(v -> goToMyLocation());
-        btnZoomIn.setOnClickListener(v -> { if (mMap != null) mMap.animateCamera(CameraUpdateFactory.zoomIn()); });
-        btnZoomOut.setOnClickListener(v -> { if (mMap != null) mMap.animateCamera(CameraUpdateFactory.zoomOut()); });
-        btnMapType.setOnClickListener(this::showMapTypePopup);
-        btnSettings.setOnClickListener(v -> {
-            startActivity(new Intent(MainActivity.this, Settings.class));
+        btnHome.setOnClickListener(v -> { if (mMap != null) mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(BILKENT_UNIVERSITY, DEFAULT_ZOOM)); });
+        btnFavorites.setOnClickListener(v -> Toast.makeText(this, "Favorites coming soon!", Toast.LENGTH_SHORT).show());
+        btnSettings.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, Settings.class)));
+        
+        etSearch.setOnEditorActionListener((v, actionId, event) -> {
+            searchForLocation(etSearch.getText().toString().trim());
+            return true;
         });
     }
 
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
         mMap = googleMap; isMapReady = true;
-        mMap.getUiSettings().setZoomControlsEnabled(false);
-        mMap.getUiSettings().setMyLocationButtonEnabled(false);
+        
+        // Fix for "Touch mechanics": Apply padding so native buttons don't overlap with our UI bars
+        // Padding: Left, Top (Height of Search bar), Right, Bottom (Height of Nav bar)
+        mMap.setPadding(0, 220, 0, 160);
+        
+        mMap.getUiSettings().setZoomControlsEnabled(true);
+        mMap.getUiSettings().setMyLocationButtonEnabled(true);
+        mMap.getUiSettings().setMapToolbarEnabled(false); // Disable the floating 'Directions' toolbar which can bug out
+        
         enableLocationOnMap();
         
         mMap.setOnMapClickListener(latLng -> {
@@ -312,9 +312,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
         
         addBilkentBusStops();
-        
-        // Initial position is handled by XML map:camera... attributes for faster load.
-        
         if (userRole.equals("student")) startStudentListening();
     }
 
@@ -398,13 +395,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
     }
 
-    private void goToMyLocation() { 
-        if (!locationPermissionGranted()) { askForLocationPermission(); return; } 
-        try { 
-            locationClient.getLastLocation().addOnSuccessListener(l -> { if (l != null) mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(l.getLatitude(), l.getLongitude()), DEFAULT_ZOOM)); }); 
-        } catch (SecurityException ignored) {} 
-    }
-
     private void dropPin(LatLng p, String t, String s) { 
         if (activeMarker != null) activeMarker.remove(); 
         activeMarker = mMap.addMarker(new MarkerOptions().position(p).title(t).snippet(s).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))); 
@@ -431,20 +421,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }); 
     }
 
-    private void showMapTypePopup(View a) { 
-        PopupMenu p = new PopupMenu(this, a); 
-        p.getMenu().add(0, 1, 0, "Normal"); p.getMenu().add(0, 2, 0, "Satellite"); p.getMenu().add(0, 3, 0, "Terrain"); 
-        p.setOnMenuItemClickListener(i -> { if (i.getItemId() == 1) mMap.setMapType(1); else if (i.getItemId() == 2) mMap.setMapType(2); else if (i.getItemId() == 3) mMap.setMapType(3); return true; }); 
-        p.show(); 
-    }
-
     private String getAddressFromLatLng(LatLng l) { 
         try { 
             List<Address> adds = new Geocoder(this, Locale.getDefault()).getFromLocation(l.latitude, l.longitude, 1); 
             if (adds != null && !adds.isEmpty()) return adds.get(0).getAddressLine(0); 
-        } catch (Exception e) { 
-            return "Unknown"; 
-        } 
+        } catch (Exception e) { return "Unknown"; }
         return "Unknown"; 
     }
 
