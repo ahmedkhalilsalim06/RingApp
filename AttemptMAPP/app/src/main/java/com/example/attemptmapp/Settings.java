@@ -5,12 +5,10 @@ import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.os.Bundle;
-import android.util.DisplayMetrics;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.ImageButton;
 import android.widget.RadioGroup;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -19,13 +17,13 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.widget.SwitchCompat;
+import androidx.appcompat.widget.Toolbar;
 
 import java.util.Locale;
 
 public class Settings extends AppCompatActivity {
 
     private TextView tvEmail;
-    private ImageButton btnBackToMap;
     private Button btnLogout;
     private SwitchCompat switchNotifications;
     private RadioGroup rgTheme;
@@ -47,8 +45,16 @@ public class Settings extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
 
+        // Initialize Toolbar as Back Button
+        Toolbar toolbar = findViewById(R.id.settingsToolbar);
+        setSupportActionBar(toolbar);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().setDisplayShowHomeEnabled(true);
+        }
+        toolbar.setNavigationOnClickListener(v -> finish());
+
         // Initialize Views
-        btnBackToMap = findViewById(R.id.btnBackToMap);
         tvEmail = findViewById(R.id.tvSettingsEmail);
         btnLogout = findViewById(R.id.btnSettingsLogout);
         switchNotifications = findViewById(R.id.switchNotifications);
@@ -79,7 +85,6 @@ public class Settings extends AppCompatActivity {
         }
 
         // Listeners
-        btnBackToMap.setOnClickListener(v -> finish());
         btnLogout.setOnClickListener(v -> {
             prefs.edit().clear().apply();
             startActivity(new Intent(this, LoginActivity.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK));
@@ -94,7 +99,6 @@ public class Settings extends AppCompatActivity {
             if (dark != prefs.getBoolean("dark_mode", false)) {
                 prefs.edit().putBoolean("dark_mode", dark).apply();
                 AppCompatDelegate.setDefaultNightMode(dark ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO);
-                // No need to restart manually, setDefaultNightMode does it
             }
         });
 
@@ -123,5 +127,11 @@ public class Settings extends AppCompatActivity {
         Configuration conf = res.getConfiguration();
         conf.setLocale(locale);
         res.updateConfiguration(conf, res.getDisplayMetrics());
+    }
+
+    @Override
+    public boolean onSupportNavigateUp() {
+        onBackPressed();
+        return true;
     }
 }
