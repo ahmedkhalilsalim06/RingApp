@@ -70,18 +70,26 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Next 3 Arrivals"
+            android:text="Upcoming Arrivals"
             android:gravity="center"
             android:textSize="14sp"
             android:textStyle="bold"
             android:textColor="#666666"
             android:layout_marginBottom="8dp" />
 
-        <LinearLayout
-            android:id="@+id/llScheduleContainer"
+        <!-- Scrollable area for arrivals -->
+        <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical" />
+            android:layout_height="150dp"
+            android:scrollbars="vertical"
+            android:fadeScrollbars="false">
+
+            <LinearLayout
+                android:id="@+id/llScheduleContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </ScrollView>
 
     </LinearLayout>
 </androidx.cardview.widget.CardView>

@@ -398,11 +398,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         } else {
             BusArrival next = upcoming.get(0);
             int diff = next.getAbsoluteMinutes() - currentMin;
-            tvRemaining.setText(diff + " minutes remaining");
-            tvNextArrival.setText("Next Arrival at " + next.getTimeString());
+            tvRemaining.setText(diff + " min remaining");
+            tvNextArrival.setText("Next: " + next.getTimeString());
 
-            for (int i = 0; i < Math.min(3, upcoming.size()); i++) {
-                BusArrival b = upcoming.get(i);
+            for (BusArrival b : upcoming) {
                 View row = LayoutInflater.from(this).inflate(R.layout.item_schedule_row, container, false);
                 ((TextView) row.findViewById(R.id.tvTime)).setText(b.getTimeString());
                 ((TextView) row.findViewById(R.id.tvBusName)).setText(b.busName);
@@ -425,7 +424,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         View bottomSheetInternal = currentBottomSheet.findViewById(com.google.android.material.R.id.design_bottom_sheet);
         if (bottomSheetInternal != null) {
             bottomSheetInternal.setBackgroundColor(Color.TRANSPARENT);
-            // Force width to match parent to fix the "half allocated space" issue
             ViewGroup.LayoutParams params = bottomSheetInternal.getLayoutParams();
             params.width = ViewGroup.LayoutParams.MATCH_PARENT;
             bottomSheetInternal.setLayoutParams(params);
