@@ -1,6 +1,7 @@
 package com.example.attemptmapp;
 
 import android.Manifest;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -18,6 +19,8 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -58,9 +61,11 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -96,6 +101,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private DatabaseReference dbRef;
     private String userRole = "";
     private final Map<String, Marker> busMarkers = new HashMap<>();
+    private final Set<String> persistentVisibleBuses = new HashSet<>();
     private final Handler trackerHandler = new Handler(Looper.getMainLooper());
     private Runnable trackerRunnable;
     private boolean isMapReady = false;
@@ -173,8 +179,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         if (userRole.startsWith("driver_")) {
             startDriverTracking();
-        } else {
-            startStudentListening();
         }
     }
 
@@ -185,7 +189,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             public void run() {
                 if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                     locationClient.getLastLocation().addOnSuccessListener(location -> {
-                        if (location != null) {
+                        if (location != null && dbRef != null) {
                             Map<String, Object> map = new HashMap<>();
                             map.put("lat", location.getLatitude());
                             map.put("lng", location.getLongitude());
@@ -201,10 +205,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void startStudentListening() {
+        if (dbRef == null) return;
         dbRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (!isMapReady) return;
+                
                 for (DataSnapshot bus : snapshot.getChildren()) {
                     String id = bus.getKey();
                     if (id == null) continue;
@@ -212,8 +218,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     Double lng = bus.child("lng").getValue(Double.class);
                     Long time = bus.child("timestamp").getValue(Long.class);
                     if (lat != null && lng != null && time != null) {
-                        if (System.currentTimeMillis() - time < 120000) updateLiveMarker(id, new LatLng(lat, lng));
-                        else removeLiveMarker(id);
+                        if (System.currentTimeMillis() - time < 120000) {
+                            updateLiveMarker(id, new LatLng(lat, lng));
+                        } else {
+                            removeLiveMarker(id);
+                        }
                     }
                 }
             }
@@ -226,10 +235,21 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             if (mMap == null) return;
             if (busMarkers.containsKey(id)) {
                 Marker marker = busMarkers.get(id);
-                if (marker != null) marker.setPosition(pos);
+                if (marker != null) {
+                    marker.setPosition(pos);
+                    // Visibility is determined by persistentVisibleBuses
+                    marker.setVisible(persistentVisibleBuses.contains(id));
+                }
             } else {
                 String label = id.replace("driver_", "").toUpperCase() + " (LIVE)";
-                Marker m = mMap.addMarker(new MarkerOptions().position(pos).title(label).anchor(0.5f, 0.5f).zIndex(999).icon(createRedCircleIcon()));
+                boolean isPersistent = persistentVisibleBuses.contains(id);
+                Marker m = mMap.addMarker(new MarkerOptions()
+                        .position(pos)
+                        .title(label)
+                        .anchor(0.5f, 0.5f)
+                        .zIndex(999)
+                        .icon(createRedCircleIcon())
+                        .visible(isPersistent)); 
                 busMarkers.put(id, m);
             }
         });
@@ -357,6 +377,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
 
         addBilkentBusStops();
+        startStudentListening();
     }
 
     private void addBilkentBusStops() {
@@ -368,7 +389,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         mMap.setOnMarkerClickListener(marker -> {
             String title = marker.getTitle();
             if (title != null && stopSchedules.containsKey(title)) { showBusStopBottomSheet(title); return true; }
-            if (activeMarker != null && marker.equals(activeMarker)) { activeMarker.remove(); activeMarker = null; if (currentPolyline != null) currentPolyline.remove(); return true; }
+            if (activeMarker != null && marker.equals(activeMarker)) { activeMarker.remove(); activeMarker = null; if (currentPolyline != null) currentBusPolyline.remove(); return true; }
             marker.showInfoWindow(); return false;
         });
     }
@@ -406,7 +427,32 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 ((TextView) row.findViewById(R.id.tvTime)).setText(b.getTimeString());
                 ((TextView) row.findViewById(R.id.tvBusName)).setText(b.busName);
                 
-                row.findViewById(R.id.ivLocation).setOnClickListener(v -> Toast.makeText(this, "Locating " + b.busName, Toast.LENGTH_SHORT).show());
+                String driverId = "driver_" + b.busName.toLowerCase();
+                View btnLocation = row.findViewById(R.id.ivLocation);
+                
+                btnLocation.setOnClickListener(v -> {
+                    if (busMarkers.containsKey(driverId)) {
+                        Marker m = busMarkers.get(driverId);
+                        if (m != null) {
+                            if (persistentVisibleBuses.contains(driverId)) {
+                                // Already visible, hide it
+                                persistentVisibleBuses.remove(driverId);
+                                m.setVisible(false);
+                                Toast.makeText(this, "Live location hidden", Toast.LENGTH_SHORT).show();
+                            } else {
+                                // Not visible, show it
+                                persistentVisibleBuses.add(driverId);
+                                m.setVisible(true);
+                                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(m.getPosition(), 16f));
+                                Toast.makeText(this, "Live location shown", Toast.LENGTH_SHORT).show();
+                            }
+                            if (currentBottomSheet != null) currentBottomSheet.dismiss();
+                        }
+                    } else {
+                        Toast.makeText(this, "Driver for " + b.busName + " is not live", Toast.LENGTH_SHORT).show();
+                    }
+                });
+
                 row.findViewById(R.id.ivTrack).setOnClickListener(v -> { 
                     fetchBusTrajectory(b.busName); 
                     if(currentBottomSheet != null) currentBottomSheet.dismiss(); 

@@ -21,7 +21,6 @@ public class LoginActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        // Check if already logged in
         SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
         if (prefs.contains("userRole")) {
             startActivity(new Intent(this, MainActivity.class));
@@ -36,17 +35,25 @@ public class LoginActivity extends AppCompatActivity {
         tvSignUp = findViewById(R.id.tvSignUp);
 
         btnLogin.setOnClickListener(v -> {
-            String code = etLoginCode.getText().toString().trim().toLowerCase();
-            if (code.equals("student") || code.startsWith("driver_")) {
-                // Save login state
+            String input = etLoginCode.getText().toString().trim();
+            String code = input.toLowerCase();
+            String userRole = "";
+
+            if (code.equals("student")) {
+                userRole = "student";
+            } else if (code.equals("tunus") || code.equals("ring") || code.equals("sihhiye")) {
+                userRole = "driver_" + code;
+            }
+
+            if (!userRole.isEmpty()) {
                 SharedPreferences.Editor editor = prefs.edit();
-                editor.putString("userRole", code);
+                editor.putString("userRole", userRole);
                 editor.apply();
 
                 startActivity(new Intent(LoginActivity.this, MainActivity.class));
                 finish();
             } else {
-                Toast.makeText(this, "Use 'student' or 'driver_ring1'", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Invalid code. Use 'student', 'Tunus', 'Ring', or 'Sihhiye'", Toast.LENGTH_LONG).show();
             }
         });
 
