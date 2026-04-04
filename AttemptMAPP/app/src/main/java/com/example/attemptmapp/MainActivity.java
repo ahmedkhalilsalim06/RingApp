@@ -1,7 +1,6 @@
 package com.example.attemptmapp;
 
 import android.Manifest;
-import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -16,11 +15,9 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.Window;
-import android.view.WindowManager;
+import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -46,6 +43,7 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -86,7 +84,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private EditText etSearch;
     private ImageButton btnSettings, btnHome, btnFavorites;
     private Marker activeMarker;
-    private Dialog currentStopDialog;
+    private BottomSheetDialog currentBottomSheet;
     
     private Polyline currentPolyline;
     private Polyline currentBusPolyline;
@@ -349,9 +347,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         enableLocationOnMap();
 
         mMap.setOnMapClickListener(latLng -> {
-            if (currentStopDialog != null && currentStopDialog.isShowing()) {
-                currentStopDialog.dismiss();
-                currentStopDialog = null;
+            if (currentBottomSheet != null && currentBottomSheet.isShowing()) {
+                currentBottomSheet.dismiss();
             }
             executorService.execute(() -> {
                 String address = getAddressFromLatLng(latLng);
@@ -370,13 +367,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         mMap.setOnMarkerClickListener(marker -> {
             String title = marker.getTitle();
-            if (title != null && stopSchedules.containsKey(title)) { showBusStopCard(title); return true; }
+            if (title != null && stopSchedules.containsKey(title)) { showBusStopBottomSheet(title); return true; }
             if (activeMarker != null && marker.equals(activeMarker)) { activeMarker.remove(); activeMarker = null; if (currentPolyline != null) currentPolyline.remove(); return true; }
             marker.showInfoWindow(); return false;
         });
     }
 
-    private void showBusStopCard(String stopName) {
+    private void showBusStopBottomSheet(String stopName) {
         if (userRole.startsWith("driver_")) return;
         
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_bus_stop, null);
@@ -411,29 +408,30 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 ((TextView) row.findViewById(R.id.tvBusName)).setText(b.busName);
                 
                 row.findViewById(R.id.ivLocation).setOnClickListener(v -> Toast.makeText(this, "Locating " + b.busName, Toast.LENGTH_SHORT).show());
-                row.findViewById(R.id.ivTrack).setOnClickListener(v -> { fetchBusTrajectory(b.busName); if(currentStopDialog != null) currentStopDialog.dismiss(); });
+                row.findViewById(R.id.ivTrack).setOnClickListener(v -> { 
+                    fetchBusTrajectory(b.busName); 
+                    if(currentBottomSheet != null) currentBottomSheet.dismiss(); 
+                });
                 
                 container.addView(row);
             }
         }
 
-        if (currentStopDialog != null && currentStopDialog.isShowing()) currentStopDialog.dismiss();
+        if (currentBottomSheet != null && currentBottomSheet.isShowing()) currentBottomSheet.dismiss();
         
-        currentStopDialog = new Dialog(this);
-        currentStopDialog.setContentView(view);
-        currentStopDialog.setCancelable(true);
+        currentBottomSheet = new BottomSheetDialog(this);
+        currentBottomSheet.setContentView(view);
         
-        Window window = currentStopDialog.getWindow();
-        if (window != null) {
-            window.setBackgroundDrawableResource(android.R.color.transparent);
-            WindowManager.LayoutParams lp = window.getAttributes();
-            lp.width = WindowManager.LayoutParams.WRAP_CONTENT;
-            lp.height = WindowManager.LayoutParams.WRAP_CONTENT;
-            lp.gravity = Gravity.CENTER;
-            window.setAttributes(lp);
+        View bottomSheetInternal = currentBottomSheet.findViewById(com.google.android.material.R.id.design_bottom_sheet);
+        if (bottomSheetInternal != null) {
+            bottomSheetInternal.setBackgroundColor(Color.TRANSPARENT);
+            // Force width to match parent to fix the "half allocated space" issue
+            ViewGroup.LayoutParams params = bottomSheetInternal.getLayoutParams();
+            params.width = ViewGroup.LayoutParams.MATCH_PARENT;
+            bottomSheetInternal.setLayoutParams(params);
         }
         
-        currentStopDialog.show();
+        currentBottomSheet.show();
     }
 
     private void fetchBusTrajectory(String busName) {
