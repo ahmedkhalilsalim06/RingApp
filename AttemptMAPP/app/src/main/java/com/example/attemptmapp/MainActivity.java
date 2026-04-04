@@ -55,7 +55,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -98,14 +97,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private final LatLng BILKENT_UNIVERSITY = new LatLng(39.8682, 32.7487);
 
     // Stop Coordinates
-    private final LatLng STOP_MAIN = new LatLng(39.86657, 32.74831);
-    private final LatLng STOP_LIBRARY = new LatLng(39.87095, 32.75014);
-    private final LatLng STOP_EA = new LatLng(39.87216, 32.74913);
-    private final LatLng STOP_FADA = new LatLng(39.86975, 32.74895);
-    private final LatLng STOP_MUSIC = new LatLng(39.86812, 32.74783);
-    private final LatLng STOP_DORM76 = new LatLng(39.86484, 32.74750);
-    private final LatLng STOP_DORM90 = new LatLng(39.86315, 32.74198);
-    private final LatLng STOP_EAST = new LatLng(39.87648, 32.76480);
+    private final LatLng STOP_DORM91 = new LatLng(39.86869237025446, 32.763616574588);
+    private final LatLng STOP_DORM92 = new LatLng(39.8694869378631, 32.76261873828766);
+    private final LatLng STOP_MESCIT = new LatLng(39.86770849854348, 32.7511017991731);
+    private final LatLng STOP_BILKA_HILL = new LatLng(39.86526670742294, 32.74824902002951);
+    private final LatLng STOP_KUTUPHANE = new LatLng(39.87095, 32.75014); // Library
+    private final LatLng STOP_NIZAMIYE = new LatLng(39.86657, 32.74831); // Main Entrance
     
     private final LatLng DEST_TUNUS = new LatLng(39.9117, 32.8544);
     private final LatLng DEST_SIHHIYE = new LatLng(39.9298, 32.8530);
@@ -114,6 +111,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private final LatLng WAY_MALTEPE = new LatLng(39.9250, 32.8430);
 
     private final Map<String, String[]> stopBusesMap = new HashMap<>();
+    private final Map<String, String> busSchedules = new HashMap<>();
     private final Map<String, Integer> busColors = new HashMap<>();
 
     @Override
@@ -259,17 +257,28 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void initBusData() {
-        stopBusesMap.put("Main Entrance Stop", new String[]{"Tunus Shuttle", "Sihhiye Shuttle", "Ring 1", "Ring 2"});
-        stopBusesMap.put("Library Stop", new String[]{"Ring 1", "Ring 2", "East Campus Shuttle"});
-        stopBusesMap.put("EA Building Stop", new String[]{"Ring 1", "Ring 2"});
-        stopBusesMap.put("FADA Stop", new String[]{"Ring 1", "Ring 2"});
-        stopBusesMap.put("Music Building Stop", new String[]{"Ring 1"});
-        stopBusesMap.put("Dorm 76 Stop", new String[]{"Ring 1", "Ring 2"});
-        stopBusesMap.put("Dorm 90 Stop", new String[]{"Ring 1", "Ring 2"});
-        stopBusesMap.put("East Campus Stop", new String[]{"East Campus Shuttle", "Tunus (East)", "Sihhiye (East)"});
-        busColors.put("Ring 1", Color.RED); busColors.put("Ring 2", Color.GREEN); busColors.put("Tunus Shuttle", Color.MAGENTA);
-        busColors.put("Sihhiye Shuttle", Color.BLUE); busColors.put("East Campus Shuttle", Color.rgb(255, 165, 0));
-        busColors.put("Tunus (East)", Color.CYAN); busColors.put("Sihhiye (East)", Color.DKGRAY);
+        stopBusesMap.put("Dorm 91", new String[]{"Ring Bus", "Tunus Bus", "Sihhiye Bus"});
+        busSchedules.put("Dorm 91_Ring Bus", "8:00, 9:00, 10:00, 11:00, 13:00");
+        busSchedules.put("Dorm 91_Tunus Bus", "Every 30 (8:30-23:30)");
+        busSchedules.put("Dorm 91_Sihhiye Bus", "Every 30 (8:30-23:30)");
+
+        stopBusesMap.put("Dorm 92", new String[]{"Ring Bus", "Tunus Bus", "Sihhiye Bus"});
+        busSchedules.put("Dorm 92_Ring Bus", "8:03, 9:03, 10:03, 11:03, 13:03");
+        busSchedules.put("Dorm 92_Tunus Bus", "Every 32-33 (8:33-23:33)");
+        busSchedules.put("Dorm 92_Sihhiye Bus", "Every 32-33 (8:33-23:33)");
+
+        stopBusesMap.put("Mescit bus stop", new String[]{"Tunus Bus", "Ring Bus"});
+        busSchedules.put("Mescit bus stop_Tunus Bus", "Every 30 (8:30-17:30), every hr (18:00-23:00)");
+        busSchedules.put("Mescit bus stop_Ring Bus", "Every hour");
+
+        stopBusesMap.put("Bilka hill bus stop", new String[]{"Ring Bus", "Tunus Bus"});
+        
+        stopBusesMap.put("Kütüphane", new String[]{"Ring Bus", "Tunus Bus", "Sihhiye Bus"});
+        stopBusesMap.put("Nizamiye", new String[]{"Ring Bus", "Tunus Bus", "Sihhiye Bus"});
+
+        busColors.put("Ring Bus", Color.RED); 
+        busColors.put("Tunus Bus", Color.MAGENTA);
+        busColors.put("Sihhiye Bus", Color.BLUE);
     }
 
     private void bindViews() {
@@ -294,13 +303,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onMapReady(@NonNull GoogleMap googleMap) {
         mMap = googleMap; isMapReady = true;
         
-        // Fix for "Touch mechanics": Apply padding so native buttons don't overlap with our UI bars
-        // Padding: Left, Top (Height of Search bar), Right, Bottom (Height of Nav bar)
         mMap.setPadding(0, 220, 0, 160);
         
         mMap.getUiSettings().setZoomControlsEnabled(true);
         mMap.getUiSettings().setMyLocationButtonEnabled(true);
-        mMap.getUiSettings().setMapToolbarEnabled(false); // Disable the floating 'Directions' toolbar which can bug out
+        mMap.getUiSettings().setMapToolbarEnabled(false);
         
         enableLocationOnMap();
         
@@ -316,13 +323,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void addBilkentBusStops() {
-        LatLng[] coords = {STOP_MAIN, STOP_LIBRARY, STOP_EA, STOP_FADA, STOP_MUSIC, STOP_DORM76, STOP_DORM90, STOP_EAST};
-        String[] names = {"Main Entrance Stop", "Library Stop", "EA Building Stop", "FADA Stop", "Music Building Stop", "Dorm 76 Stop", "Dorm 90 Stop", "East Campus Stop"};
+        LatLng[] coords = {STOP_DORM91, STOP_DORM92, STOP_MESCIT, STOP_BILKA_HILL, STOP_KUTUPHANE, STOP_NIZAMIYE};
+        String[] names = {"Dorm 91", "Dorm 92", "Mescit bus stop", "Bilka hill bus stop", "Kütüphane", "Nizamiye"};
         for (int i = 0; i < coords.length; i++) {
             mMap.addMarker(new MarkerOptions().position(coords[i]).title(names[i]).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW)));
         }
         mMap.setOnMarkerClickListener(marker -> {
-            if (marker.getTitle() != null && marker.getTitle().contains("Stop")) { showBusListDialog(marker.getTitle()); return true; }
+            String title = marker.getTitle();
+            if (title != null && (title.contains("stop") || title.contains("Dorm") || title.equals("Kütüphane") || title.equals("Nizamiye"))) { 
+                showBusListDialog(title); return true; 
+            }
             if (activeMarker != null && marker.equals(activeMarker)) { activeMarker.remove(); activeMarker = null; if (currentPolyline != null) currentPolyline.remove(); return true; }
             marker.showInfoWindow(); return false;
         });
@@ -330,22 +340,41 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void showBusListDialog(String stopName) {
         if (userRole.startsWith("driver_")) return;
-        String[] buses = stopBusesMap.get(stopBusesMap.containsKey(stopName) ? stopName : ""); if (buses == null) return;
-        String[] items = new String[buses.length]; Random r = new Random();
+        String[] buses = stopBusesMap.get(stopName); 
+        if (buses == null || buses.length == 0) {
+            Toast.makeText(this, "No bus information for this stop", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String[] items = new String[buses.length];
         for (int i = 0; i < buses.length; i++) {
-            String id = "driver_" + buses[i].toLowerCase().replace(" ", "");
-            items[i] = buses[i] + (busMarkers.containsKey(id) ? " - [LIVE]" : " - Sched: " + (r.nextInt(20)+1) + " min");
+            String busName = buses[i];
+            String id = "driver_" + busName.toLowerCase().replace(" ", "");
+            String schedule = busSchedules.get(stopName + "_" + busName);
+            items[i] = busName + (busMarkers.containsKey(id) ? " - [LIVE]" : " - Sched: " + (schedule != null ? schedule : "See schedule"));
         }
         new AlertDialog.Builder(this).setTitle("Buses at " + stopName).setItems(items, (d, w) -> fetchBusTrajectory(buses[w])).show();
     }
 
     private void fetchBusTrajectory(String busName) {
-        List<LatLng> waypoints = new ArrayList<>(); LatLng origin = STOP_MAIN, dest = STOP_MAIN;
-        if (busName.equals("Ring 1")) { waypoints.add(STOP_MUSIC); waypoints.add(STOP_FADA); waypoints.add(STOP_LIBRARY); waypoints.add(STOP_EA); }
-        else if (busName.equals("Ring 2")) { waypoints.add(STOP_DORM76); waypoints.add(STOP_DORM90); waypoints.add(STOP_LIBRARY); waypoints.add(STOP_EA); waypoints.add(STOP_FADA); }
-        else if (busName.contains("Tunus")) { origin = busName.contains("East") ? STOP_EAST : STOP_MAIN; waypoints.add(STOP_LIBRARY); waypoints.add(WAY_ASTI); waypoints.add(WAY_BAHCELIEVLER); dest = DEST_TUNUS; }
-        else if (busName.contains("Sihhiye")) { origin = busName.contains("East") ? STOP_EAST : STOP_MAIN; waypoints.add(STOP_LIBRARY); waypoints.add(WAY_ASTI); waypoints.add(WAY_MALTEPE); dest = DEST_SIHHIYE; }
-        else if (busName.equals("East Campus Shuttle")) { origin = STOP_LIBRARY; dest = STOP_EAST; }
+        List<LatLng> waypoints = new ArrayList<>();
+        LatLng origin = STOP_DORM91;
+        
+        // common route sequence: Dorm 91 -> Dorm 92 -> Mescit -> Bilka hill -> Kütüphane -> Nizamiye
+        waypoints.add(STOP_DORM92);
+        waypoints.add(STOP_MESCIT);
+        waypoints.add(STOP_BILKA_HILL);
+        waypoints.add(STOP_KUTUPHANE);
+        LatLng dest = STOP_NIZAMIYE;
+
+        if (busName.contains("Tunus")) {
+            waypoints.add(WAY_ASTI);
+            waypoints.add(WAY_BAHCELIEVLER);
+            dest = DEST_TUNUS;
+        } else if (busName.contains("Sihhiye")) {
+            waypoints.add(WAY_ASTI);
+            waypoints.add(WAY_MALTEPE);
+            dest = DEST_SIHHIYE;
+        }
         
         Integer color = busColors.get(busName);
         requestRoute(origin, dest, waypoints, color != null ? color : Color.GRAY);
