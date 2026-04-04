@@ -1,6 +1,7 @@
 package com.example.attemptmapp;
 
 import android.Manifest;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -15,14 +16,19 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -51,6 +57,8 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -78,6 +86,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private EditText etSearch;
     private ImageButton btnSettings, btnHome, btnFavorites;
     private Marker activeMarker;
+    private Dialog currentStopDialog;
     
     private Polyline currentPolyline;
     private Polyline currentBusPolyline;
@@ -101,8 +110,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private final LatLng STOP_DORM92 = new LatLng(39.8694869378631, 32.76261873828766);
     private final LatLng STOP_MESCIT = new LatLng(39.86770849854348, 32.7511017991731);
     private final LatLng STOP_BILKA_HILL = new LatLng(39.86526670742294, 32.74824902002951);
-    private final LatLng STOP_KUTUPHANE = new LatLng(39.87095, 32.75014); // Library
-    private final LatLng STOP_NIZAMIYE = new LatLng(39.86657, 32.74831); // Main Entrance
+    private final LatLng STOP_KUTUPHANE = new LatLng(39.88105736313171, 32.754873699180145);
+    private final LatLng STOP_NIZAMIYE = new LatLng(39.86657, 32.74831);
     
     private final LatLng DEST_TUNUS = new LatLng(39.9117, 32.8544);
     private final LatLng DEST_SIHHIYE = new LatLng(39.9298, 32.8530);
@@ -110,9 +119,28 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private final LatLng WAY_BAHCELIEVLER = new LatLng(39.9213, 32.8228);
     private final LatLng WAY_MALTEPE = new LatLng(39.9250, 32.8430);
 
-    private final Map<String, String[]> stopBusesMap = new HashMap<>();
-    private final Map<String, String> busSchedules = new HashMap<>();
+    private final Map<String, List<BusArrival>> stopSchedules = new HashMap<>();
     private final Map<String, Integer> busColors = new HashMap<>();
+
+    static class BusArrival implements Comparable<BusArrival> {
+        String busName;
+        int hour;
+        int minute;
+
+        BusArrival(String busName, int hour, int minute) {
+            this.busName = busName;
+            this.hour = hour;
+            this.minute = minute;
+        }
+
+        int getAbsoluteMinutes() { return hour * 60 + minute; }
+        String getTimeString() { return String.format(Locale.getDefault(), "%02d:%02d", hour, minute); }
+
+        @Override
+        public int compareTo(BusArrival other) {
+            return Integer.compare(this.getAbsoluteMinutes(), other.getAbsoluteMinutes());
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -132,16 +160,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         try {
             database = FirebaseDatabase.getInstance(DB_URL);
             dbRef = database.getReference("live_buses");
-            
-            database.getReference(".info/connected").addValueEventListener(new ValueEventListener() {
-                @Override
-                public void onDataChange(@NonNull DataSnapshot snapshot) {
-                    Boolean connected = snapshot.getValue(Boolean.class);
-                    if (connected != null && connected) Log.d(TAG, "STATUS: CONNECTED");
-                    else Log.d(TAG, "STATUS: OFFLINE");
-                }
-                @Override public void onCancelled(@NonNull DatabaseError error) {}
-            });
         } catch (Exception e) {
             Log.e(TAG, "Firebase setup failed: " + e.getMessage());
         }
@@ -164,7 +182,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void startDriverTracking() {
         if (trackerRunnable != null) trackerHandler.removeCallbacks(trackerRunnable);
-        
         trackerRunnable = new Runnable() {
             @Override
             public void run() {
@@ -196,13 +213,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     Double lat = bus.child("lat").getValue(Double.class);
                     Double lng = bus.child("lng").getValue(Double.class);
                     Long time = bus.child("timestamp").getValue(Long.class);
-                    
                     if (lat != null && lng != null && time != null) {
-                        if (System.currentTimeMillis() - time < 120000) {
-                            updateLiveMarker(id, new LatLng(lat, lng));
-                        } else {
-                            removeLiveMarker(id);
-                        }
+                        if (System.currentTimeMillis() - time < 120000) updateLiveMarker(id, new LatLng(lat, lng));
+                        else removeLiveMarker(id);
                     }
                 }
             }
@@ -215,17 +228,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             if (mMap == null) return;
             if (busMarkers.containsKey(id)) {
                 Marker marker = busMarkers.get(id);
-                if (marker != null) {
-                    marker.setPosition(pos);
-                }
+                if (marker != null) marker.setPosition(pos);
             } else {
                 String label = id.replace("driver_", "").toUpperCase() + " (LIVE)";
-                Marker m = mMap.addMarker(new MarkerOptions()
-                        .position(pos)
-                        .title(label)
-                        .anchor(0.5f, 0.5f)
-                        .zIndex(999)
-                        .icon(createRedCircleIcon()));
+                Marker m = mMap.addMarker(new MarkerOptions().position(pos).title(label).anchor(0.5f, 0.5f).zIndex(999).icon(createRedCircleIcon()));
                 busMarkers.put(id, m);
             }
         });
@@ -248,37 +254,75 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         runOnUiThread(() -> {
             if (busMarkers.containsKey(id)) {
                 Marker marker = busMarkers.get(id);
-                if (marker != null) {
-                    marker.remove();
-                }
+                if (marker != null) marker.remove();
                 busMarkers.remove(id);
             }
         });
     }
 
     private void initBusData() {
-        stopBusesMap.put("Dorm 91", new String[]{"Ring Bus", "Tunus Bus", "Sihhiye Bus"});
-        busSchedules.put("Dorm 91_Ring Bus", "8:00, 9:00, 10:00, 11:00, 13:00");
-        busSchedules.put("Dorm 91_Tunus Bus", "Every 30 (8:30-23:30)");
-        busSchedules.put("Dorm 91_Sihhiye Bus", "Every 30 (8:30-23:30)");
+        busColors.put("Ring", Color.RED); 
+        busColors.put("Tunus", Color.MAGENTA);
+        busColors.put("Sihhiye", Color.BLUE);
 
-        stopBusesMap.put("Dorm 92", new String[]{"Ring Bus", "Tunus Bus", "Sihhiye Bus"});
-        busSchedules.put("Dorm 92_Ring Bus", "8:03, 9:03, 10:03, 11:03, 13:03");
-        busSchedules.put("Dorm 92_Tunus Bus", "Every 32-33 (8:33-23:33)");
-        busSchedules.put("Dorm 92_Sihhiye Bus", "Every 32-33 (8:33-23:33)");
+        // Dorm 91
+        List<BusArrival> d91 = new ArrayList<>();
+        int[] ringHours = {8, 9, 10, 11, 13};
+        for (int h : ringHours) d91.add(new BusArrival("Ring", h, 0));
+        for (int h = 8; h <= 23; h++) {
+            d91.add(new BusArrival("Tunus", h, 30));
+            d91.add(new BusArrival("Sihhiye", h, 30));
+        }
+        stopSchedules.put("Dorm 91", d91);
 
-        stopBusesMap.put("Mescit bus stop", new String[]{"Tunus Bus", "Ring Bus"});
-        busSchedules.put("Mescit bus stop_Tunus Bus", "Every 30 (8:30-17:30), every hr (18:00-23:00)");
-        busSchedules.put("Mescit bus stop_Ring Bus", "Every hour");
+        // Dorm 92
+        List<BusArrival> d92 = new ArrayList<>();
+        for (int h : ringHours) d92.add(new BusArrival("Ring", h, 3));
+        for (int h = 8; h <= 23; h++) {
+            d92.add(new BusArrival("Tunus", h, 33));
+            d92.add(new BusArrival("Sihhiye", h, 33));
+        }
+        stopSchedules.put("Dorm 92", d92);
 
-        stopBusesMap.put("Bilka hill bus stop", new String[]{"Ring Bus", "Tunus Bus"});
-        
-        stopBusesMap.put("Kütüphane", new String[]{"Ring Bus", "Tunus Bus", "Sihhiye Bus"});
-        stopBusesMap.put("Nizamiye", new String[]{"Ring Bus", "Tunus Bus", "Sihhiye Bus"});
+        // Mescit
+        List<BusArrival> mescit = new ArrayList<>();
+        for (int h = 8; h <= 23; h++) mescit.add(new BusArrival("Ring", h, 0));
+        for (int h = 8; h <= 17; h++) {
+            mescit.add(new BusArrival("Tunus", h, 0));
+            mescit.add(new BusArrival("Tunus", h, 30));
+        }
+        for (int h = 18; h <= 23; h++) mescit.add(new BusArrival("Tunus", h, 0));
+        stopSchedules.put("Mescit bus stop", mescit);
 
-        busColors.put("Ring Bus", Color.RED); 
-        busColors.put("Tunus Bus", Color.MAGENTA);
-        busColors.put("Sihhiye Bus", Color.BLUE);
+        // Bilka hill
+        List<BusArrival> bilka = new ArrayList<>();
+        for (int h = 8; h <= 23; h++) {
+            bilka.add(new BusArrival("Ring", h, 2));
+            bilka.add(new BusArrival("Tunus", h, 35));
+        }
+        stopSchedules.put("Bilka hill bus stop", bilka);
+
+        // Kütüphane
+        List<BusArrival> lib = new ArrayList<>();
+        int[] libRing = {8, 9, 10, 12, 13};
+        for (int h : libRing) lib.add(new BusArrival("Ring", h, 10));
+        for (int h = 8; h <= 23; h++) {
+            lib.add(new BusArrival("Tunus", h, 50));
+            lib.add(new BusArrival("Sihhiye", h, 50));
+        }
+        stopSchedules.put("Kütüphane", lib);
+
+        // Nizamiye
+        List<BusArrival> niz = new ArrayList<>();
+        for (int h = 8; h <= 23; h++) {
+            niz.add(new BusArrival("Ring", h, 15));
+            niz.add(new BusArrival("Tunus", h, 55));
+            niz.add(new BusArrival("Sihhiye", h, 55));
+        }
+        stopSchedules.put("Nizamiye", niz);
+
+        // Sort all
+        for (List<BusArrival> list : stopSchedules.values()) Collections.sort(list);
     }
 
     private void bindViews() {
@@ -292,34 +336,30 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         btnHome.setOnClickListener(v -> { if (mMap != null) mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(BILKENT_UNIVERSITY, DEFAULT_ZOOM)); });
         btnFavorites.setOnClickListener(v -> Toast.makeText(this, "Favorites coming soon!", Toast.LENGTH_SHORT).show());
         btnSettings.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, Settings.class)));
-        
-        etSearch.setOnEditorActionListener((v, actionId, event) -> {
-            searchForLocation(etSearch.getText().toString().trim());
-            return true;
-        });
+        etSearch.setOnEditorActionListener((v, actionId, event) -> { searchForLocation(etSearch.getText().toString().trim()); return true; });
     }
 
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
         mMap = googleMap; isMapReady = true;
-        
         mMap.setPadding(0, 220, 0, 160);
-        
         mMap.getUiSettings().setZoomControlsEnabled(true);
         mMap.getUiSettings().setMyLocationButtonEnabled(true);
         mMap.getUiSettings().setMapToolbarEnabled(false);
-        
         enableLocationOnMap();
-        
+
         mMap.setOnMapClickListener(latLng -> {
+            if (currentStopDialog != null && currentStopDialog.isShowing()) {
+                currentStopDialog.dismiss();
+                currentStopDialog = null;
+            }
             executorService.execute(() -> {
                 String address = getAddressFromLatLng(latLng);
                 runOnUiThread(() -> dropPin(latLng, "Dropped Pin", address));
             });
         });
-        
+
         addBilkentBusStops();
-        if (userRole.equals("student")) startStudentListening();
     }
 
     private void addBilkentBusStops() {
@@ -330,53 +370,80 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         mMap.setOnMarkerClickListener(marker -> {
             String title = marker.getTitle();
-            if (title != null && (title.contains("stop") || title.contains("Dorm") || title.equals("Kütüphane") || title.equals("Nizamiye"))) { 
-                showBusListDialog(title); return true; 
-            }
+            if (title != null && stopSchedules.containsKey(title)) { showBusStopCard(title); return true; }
             if (activeMarker != null && marker.equals(activeMarker)) { activeMarker.remove(); activeMarker = null; if (currentPolyline != null) currentPolyline.remove(); return true; }
             marker.showInfoWindow(); return false;
         });
     }
 
-    private void showBusListDialog(String stopName) {
+    private void showBusStopCard(String stopName) {
         if (userRole.startsWith("driver_")) return;
-        String[] buses = stopBusesMap.get(stopName); 
-        if (buses == null || buses.length == 0) {
-            Toast.makeText(this, "No bus information for this stop", Toast.LENGTH_SHORT).show();
-            return;
+        
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_bus_stop, null);
+        TextView tvRemaining = view.findViewById(R.id.tvRemainingTime);
+        TextView tvNextArrival = view.findViewById(R.id.tvNextArrivalTime);
+        LinearLayout container = view.findViewById(R.id.llScheduleContainer);
+
+        List<BusArrival> schedule = stopSchedules.get(stopName);
+        if (schedule == null) return;
+
+        Calendar now = Calendar.getInstance();
+        int currentMin = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE);
+
+        List<BusArrival> upcoming = new ArrayList<>();
+        for (BusArrival arrival : schedule) {
+            if (arrival.getAbsoluteMinutes() >= currentMin) upcoming.add(arrival);
         }
-        String[] items = new String[buses.length];
-        for (int i = 0; i < buses.length; i++) {
-            String busName = buses[i];
-            String id = "driver_" + busName.toLowerCase().replace(" ", "");
-            String schedule = busSchedules.get(stopName + "_" + busName);
-            items[i] = busName + (busMarkers.containsKey(id) ? " - [LIVE]" : " - Sched: " + (schedule != null ? schedule : "See schedule"));
+
+        if (upcoming.isEmpty()) {
+            tvRemaining.setText("No more buses today");
+            tvNextArrival.setText("End of service");
+        } else {
+            BusArrival next = upcoming.get(0);
+            int diff = next.getAbsoluteMinutes() - currentMin;
+            tvRemaining.setText(diff + " minutes remaining");
+            tvNextArrival.setText("Next Arrival at " + next.getTimeString());
+
+            for (int i = 0; i < Math.min(3, upcoming.size()); i++) {
+                BusArrival b = upcoming.get(i);
+                View row = LayoutInflater.from(this).inflate(R.layout.item_schedule_row, container, false);
+                ((TextView) row.findViewById(R.id.tvTime)).setText(b.getTimeString());
+                ((TextView) row.findViewById(R.id.tvBusName)).setText(b.busName);
+                
+                row.findViewById(R.id.ivLocation).setOnClickListener(v -> Toast.makeText(this, "Locating " + b.busName, Toast.LENGTH_SHORT).show());
+                row.findViewById(R.id.ivTrack).setOnClickListener(v -> { fetchBusTrajectory(b.busName); if(currentStopDialog != null) currentStopDialog.dismiss(); });
+                
+                container.addView(row);
+            }
         }
-        new AlertDialog.Builder(this).setTitle("Buses at " + stopName).setItems(items, (d, w) -> fetchBusTrajectory(buses[w])).show();
+
+        if (currentStopDialog != null && currentStopDialog.isShowing()) currentStopDialog.dismiss();
+        
+        currentStopDialog = new Dialog(this);
+        currentStopDialog.setContentView(view);
+        currentStopDialog.setCancelable(true);
+        
+        Window window = currentStopDialog.getWindow();
+        if (window != null) {
+            window.setBackgroundDrawableResource(android.R.color.transparent);
+            WindowManager.LayoutParams lp = window.getAttributes();
+            lp.width = WindowManager.LayoutParams.WRAP_CONTENT;
+            lp.height = WindowManager.LayoutParams.WRAP_CONTENT;
+            lp.gravity = Gravity.CENTER;
+            window.setAttributes(lp);
+        }
+        
+        currentStopDialog.show();
     }
 
     private void fetchBusTrajectory(String busName) {
         List<LatLng> waypoints = new ArrayList<>();
-        LatLng origin = STOP_DORM91;
+        LatLng origin = STOP_DORM91, dest = STOP_NIZAMIYE;
+        waypoints.add(STOP_DORM92); waypoints.add(STOP_MESCIT); waypoints.add(STOP_BILKA_HILL); waypoints.add(STOP_KUTUPHANE);
+        if (busName.contains("Tunus")) { waypoints.add(WAY_ASTI); waypoints.add(WAY_BAHCELIEVLER); dest = DEST_TUNUS; }
+        else if (busName.contains("Sihhiye")) { waypoints.add(WAY_ASTI); waypoints.add(WAY_MALTEPE); dest = DEST_SIHHIYE; }
         
-        // common route sequence: Dorm 91 -> Dorm 92 -> Mescit -> Bilka hill -> Kütüphane -> Nizamiye
-        waypoints.add(STOP_DORM92);
-        waypoints.add(STOP_MESCIT);
-        waypoints.add(STOP_BILKA_HILL);
-        waypoints.add(STOP_KUTUPHANE);
-        LatLng dest = STOP_NIZAMIYE;
-
-        if (busName.contains("Tunus")) {
-            waypoints.add(WAY_ASTI);
-            waypoints.add(WAY_BAHCELIEVLER);
-            dest = DEST_TUNUS;
-        } else if (busName.contains("Sihhiye")) {
-            waypoints.add(WAY_ASTI);
-            waypoints.add(WAY_MALTEPE);
-            dest = DEST_SIHHIYE;
-        }
-        
-        Integer color = busColors.get(busName);
+        Integer color = busColors.get(busName.replace(" Bus", ""));
         requestRoute(origin, dest, waypoints, color != null ? color : Color.GRAY);
     }
 
@@ -405,7 +472,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private String getApiKey() { try { return getPackageManager().getApplicationInfo(getPackageName(), PackageManager.GET_META_DATA).metaData.getString("com.google.android.geo.API_KEY"); } catch (Exception e) { return null; } }
-    
     private void searchForLocation(String q) { 
         if (q.isEmpty()) return; 
         hideKeyboard(); 
@@ -415,21 +481,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 if (r != null && !r.isEmpty()) { 
                     LatLng p = new LatLng(r.get(0).getLatitude(), r.get(0).getLongitude()); 
                     String address = r.get(0).getAddressLine(0);
-                    runOnUiThread(() -> {
-                        dropPin(p, q, address); 
-                        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(p, DEFAULT_ZOOM)); 
-                    });
+                    runOnUiThread(() -> { dropPin(p, q, address); mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(p, DEFAULT_ZOOM)); });
                 } 
             } catch (IOException ignored) {} 
         });
     }
-
     private void dropPin(LatLng p, String t, String s) { 
         if (activeMarker != null) activeMarker.remove(); 
         activeMarker = mMap.addMarker(new MarkerOptions().position(p).title(t).snippet(s).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))); 
         calculateDirections(p); 
     }
-
     private void calculateDirections(LatLng d) { 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return;
         locationClient.getLastLocation().addOnSuccessListener(l -> { 
@@ -449,36 +510,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             } 
         }); 
     }
-
     private String getAddressFromLatLng(LatLng l) { 
-        try { 
-            List<Address> adds = new Geocoder(this, Locale.getDefault()).getFromLocation(l.latitude, l.longitude, 1); 
-            if (adds != null && !adds.isEmpty()) return adds.get(0).getAddressLine(0); 
-        } catch (Exception e) { return "Unknown"; }
-        return "Unknown"; 
+        try { List<Address> adds = new Geocoder(this, Locale.getDefault()).getFromLocation(l.latitude, l.longitude, 1); if (adds != null && !adds.isEmpty()) return adds.get(0).getAddressLine(0); } catch (Exception e) { return "Unknown"; } return "Unknown"; 
     }
-
     private boolean locationPermissionGranted() { return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED; }
     private void askForLocationPermission() { ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, PERMISSION_REQUEST_CODE); }
     private void enableLocationOnMap() { if (mMap != null && locationPermissionGranted()) { try { mMap.setMyLocationEnabled(true); } catch (SecurityException ignored) {} } }
-    
-    private void hideKeyboard() {
-        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-        View view = getCurrentFocus();
-        if (view != null && imm != null) {
-            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
-            view.clearFocus();
-        }
-    }
-
-    @Override public void onRequestPermissionsResult(int r, @NonNull String[] p, @NonNull int[] g) { 
-        super.onRequestPermissionsResult(r, p, g);
-        if (r == PERMISSION_REQUEST_CODE && g.length > 0 && g[0] == PackageManager.PERMISSION_GRANTED) { enableLocationOnMap(); } 
-    }
-    
-    @Override protected void onDestroy() { 
-        super.onDestroy(); 
-        if (trackerHandler != null && trackerRunnable != null) trackerHandler.removeCallbacks(trackerRunnable); 
-        executorService.shutdown();
-    }
+    private void hideKeyboard() { InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE); View view = getCurrentFocus(); if (view != null && imm != null) { imm.hideSoftInputFromWindow(view.getWindowToken(), 0); view.clearFocus(); } }
+    @Override public void onRequestPermissionsResult(int r, @NonNull String[] p, @NonNull int[] g) { super.onRequestPermissionsResult(r, p, g); if (r == PERMISSION_REQUEST_CODE && g.length > 0 && g[0] == PackageManager.PERMISSION_GRANTED) enableLocationOnMap(); }
+    @Override protected void onDestroy() { super.onDestroy(); if (trackerHandler != null && trackerRunnable != null) trackerHandler.removeCallbacks(trackerRunnable); executorService.shutdown(); }
 }
