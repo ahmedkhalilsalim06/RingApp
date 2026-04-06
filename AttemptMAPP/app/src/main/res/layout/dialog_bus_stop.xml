@@ -51,10 +51,21 @@
             </LinearLayout>
 
             <ImageView
+                android:id="@+id/btnFavorite"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_circle_button"
+                android:backgroundTint="#FF4081"
+                android:src="@drawable/ic_favorites_custom"
+                android:padding="10dp"
+                app:tint="#FFFFFF" />
+
+            <ImageView
                 android:id="@+id/btnNotify"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:layout_marginStart="16dp"
+                android:layout_marginStart="8dp"
                 android:background="@drawable/bg_circle_button"
                 android:backgroundTint="#FFD700"
                 android:src="@drawable/ic_bell"

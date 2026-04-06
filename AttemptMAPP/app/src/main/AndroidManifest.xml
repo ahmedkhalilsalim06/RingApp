@@ -43,6 +43,11 @@
             android:exported="false"
             android:label="Settings" />
 
+        <activity
+            android:name=".FavoritesActivity"
+            android:exported="false"
+            android:label="Saved Bus Stops" />
+
     </application>
 
 </manifest>

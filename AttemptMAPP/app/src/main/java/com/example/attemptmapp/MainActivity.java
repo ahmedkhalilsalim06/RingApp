@@ -352,9 +352,44 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void setupButtons() {
         btnHome.setOnClickListener(v -> { if (mMap != null) mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(BILKENT_UNIVERSITY, DEFAULT_ZOOM)); });
-        btnFavorites.setOnClickListener(v -> Toast.makeText(this, "Favorites coming soon!", Toast.LENGTH_SHORT).show());
+        btnFavorites.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, FavoritesActivity.class)));
         btnSettings.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, Settings.class)));
         etSearch.setOnEditorActionListener((v, actionId, event) -> { searchForLocation(etSearch.getText().toString().trim()); return true; });
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        checkShowStopIntent(intent);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        checkShowStopIntent(getIntent());
+    }
+
+    private void checkShowStopIntent(Intent intent) {
+        if (intent != null && intent.hasExtra("show_stop")) {
+            String stopName = intent.getStringExtra("show_stop");
+            LatLng pos = getLatLngForStop(stopName);
+            if (pos != null && mMap != null) {
+                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(pos, 17f));
+                showBusStopBottomSheet(stopName);
+            }
+            intent.removeExtra("show_stop");
+        }
+    }
+
+    private LatLng getLatLngForStop(String stopName) {
+        if ("Dorm 91".equals(stopName)) return STOP_DORM91;
+        if ("Dorm 92".equals(stopName)) return STOP_DORM92;
+        if ("Mescit bus stop".equals(stopName)) return STOP_MESCIT;
+        if ("Bilka hill bus stop".equals(stopName)) return STOP_BILKA_HILL;
+        if ("Kütüphane".equals(stopName)) return STOP_KUTUPHANE;
+        if ("Nizamiye".equals(stopName)) return STOP_NIZAMIYE;
+        return null;
     }
 
     @Override
@@ -401,6 +436,26 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         TextView tvRemaining = view.findViewById(R.id.tvRemainingTime);
         TextView tvNextArrival = view.findViewById(R.id.tvNextArrivalTime);
         LinearLayout container = view.findViewById(R.id.llScheduleContainer);
+        View btnFavorite = view.findViewById(R.id.btnFavorite);
+
+        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+        Set<String> favorites = new HashSet<>(prefs.getStringSet("favorites", new HashSet<>()));
+        
+        boolean isFavorite = favorites.contains(stopName);
+        btnFavorite.setAlpha(isFavorite ? 1.0f : 0.4f);
+
+        btnFavorite.setOnClickListener(v -> {
+            if (favorites.contains(stopName)) {
+                favorites.remove(stopName);
+                btnFavorite.setAlpha(0.4f);
+                Toast.makeText(this, "Removed from favorites", Toast.LENGTH_SHORT).show();
+            } else {
+                favorites.add(stopName);
+                btnFavorite.setAlpha(1.0f);
+                Toast.makeText(this, "Added to favorites", Toast.LENGTH_SHORT).show();
+            }
+            prefs.edit().putStringSet("favorites", favorites).apply();
+        });
 
         List<BusArrival> schedule = stopSchedules.get(stopName);
         if (schedule == null) return;
@@ -517,6 +572,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private void searchForLocation(String q) { 
         if (q.isEmpty()) return; 
         hideKeyboard(); 
+        
+        String queryLower = q.toLowerCase();
+        for (String stopName : stopSchedules.keySet()) {
+            if (stopName.toLowerCase().contains(queryLower)) {
+                LatLng pos = getLatLngForStop(stopName);
+                if (pos != null) {
+                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(pos, 17f));
+                    showBusStopBottomSheet(stopName);
+                    return;
+                }
+            }
+        }
+
         executorService.execute(() -> {
             try { 
                 List<Address> r = new Geocoder(this, Locale.getDefault()).getFromLocationName(q, 1); 
