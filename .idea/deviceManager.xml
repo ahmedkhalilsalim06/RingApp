@@ -5,10 +5,13 @@
       <list>
         <ColumnSorterState>
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
           <option name="column" value="Type" />
           <option name="order" value="DESCENDING" />
         </ColumnSorterState>
         <ColumnSorterState>
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
           <option name="column" value="Name" />

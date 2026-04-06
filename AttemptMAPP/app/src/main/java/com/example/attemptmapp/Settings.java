@@ -19,6 +19,9 @@ import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.appcompat.widget.Toolbar;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+
 import java.util.Locale;
 
 public class Settings extends AppCompatActivity {
@@ -29,6 +32,7 @@ public class Settings extends AppCompatActivity {
     private RadioGroup rgTheme;
     private Spinner spinnerLanguage;
     private TextView btnChangeEmail, btnChangePassword, btnPrivacyPolicy, btnAbout;
+    private FirebaseAuth mAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,6 +48,9 @@ public class Settings extends AppCompatActivity {
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
+
+        mAuth = FirebaseAuth.getInstance();
+        FirebaseUser user = mAuth.getCurrentUser();
 
         // Initialize Toolbar as Back Button
         Toolbar toolbar = findViewById(R.id.settingsToolbar);
@@ -66,7 +73,12 @@ public class Settings extends AppCompatActivity {
         btnAbout = findViewById(R.id.btnAbout);
 
         // Load states
-        tvEmail.setText(prefs.getString("userEmail", "user@example.com"));
+        if (user != null) {
+            tvEmail.setText(user.getEmail());
+        } else {
+            tvEmail.setText(prefs.getString("userEmail", "Not logged in"));
+        }
+        
         switchNotifications.setChecked(prefs.getBoolean("notifications_enabled", true));
         rgTheme.check(isDarkMode ? R.id.rbDark : R.id.rbLight);
 
@@ -86,6 +98,7 @@ public class Settings extends AppCompatActivity {
 
         // Listeners
         btnLogout.setOnClickListener(v -> {
+            mAuth.signOut();
             prefs.edit().clear().apply();
             startActivity(new Intent(this, LoginActivity.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK));
             finish();

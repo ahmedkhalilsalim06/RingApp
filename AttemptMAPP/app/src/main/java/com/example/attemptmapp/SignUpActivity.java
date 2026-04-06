@@ -1,8 +1,8 @@
 package com.example.attemptmapp;
 
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -10,52 +10,120 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+
+import java.util.HashMap;
+import java.util.Map;
+
 public class SignUpActivity extends AppCompatActivity {
 
-    private EditText etName, etEmail, etSignUpCode;
+    private EditText etName, etEmail, etPassword, etConfirmPassword, etSignUpCode;
     private Button btnSignUp;
     private TextView tvLogin;
+    private FirebaseAuth mAuth;
+    private DatabaseReference mDatabase;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_signup);
 
+        mAuth = FirebaseAuth.getInstance();
+        mDatabase = FirebaseDatabase.getInstance("https://bilkent-bus-tracker-default-rtdb.europe-west1.firebasedatabase.app/").getReference();
+
         etName = findViewById(R.id.etName);
         etEmail = findViewById(R.id.etEmail);
+        etPassword = findViewById(R.id.etPassword);
+        etConfirmPassword = findViewById(R.id.etConfirmPassword);
         etSignUpCode = findViewById(R.id.etSignUpCode);
         btnSignUp = findViewById(R.id.btnSignUp);
         tvLogin = findViewById(R.id.tvLogin);
 
         btnSignUp.setOnClickListener(v -> {
-            String name = etName.getText().toString().trim();
-            String email = etEmail.getText().toString().trim();
-            String code = etSignUpCode.getText().toString().trim().toLowerCase();
-
-            if (name.isEmpty() || email.isEmpty() || code.isEmpty()) {
-                Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            if (code.equals("student") || code.startsWith("driver_")) {
-                // Save user info and role
-                SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
-                SharedPreferences.Editor editor = prefs.edit();
-                editor.putString("userName", name);
-                editor.putString("userEmail", email);
-                editor.putString("userRole", code);
-                editor.apply();
-
-                Toast.makeText(this, "Registration Successful", Toast.LENGTH_SHORT).show();
-                startActivity(new Intent(SignUpActivity.this, MainActivity.class));
-                finish();
-            } else {
-                Toast.makeText(this, "Use 'student' or 'driver_ring1' as Role Code", Toast.LENGTH_SHORT).show();
-            }
+            signUpUser();
         });
 
         tvLogin.setOnClickListener(v -> {
+            startActivity(new Intent(SignUpActivity.this, LoginActivity.class));
             finish();
         });
+    }
+
+    private void signUpUser() {
+        String name = etName.getText().toString().trim();
+        String email = etEmail.getText().toString().trim();
+        String password = etPassword.getText().toString().trim();
+        String confirmPassword = etConfirmPassword.getText().toString().trim();
+        String roleCode = etSignUpCode.getText().toString().trim().toLowerCase();
+
+        if (TextUtils.isEmpty(name) || TextUtils.isEmpty(email) || TextUtils.isEmpty(password) || TextUtils.isEmpty(roleCode)) {
+            Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (!password.equals(confirmPassword)) {
+            Toast.makeText(this, "Passwords do not match", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (password.length() < 6) {
+            Toast.makeText(this, "Password should be at least 6 characters", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        btnSignUp.setEnabled(false);
+
+        mAuth.createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener(this, task -> {
+                    if (task.isSuccessful()) {
+                        FirebaseUser user = mAuth.getCurrentUser();
+                        if (user != null) {
+                            sendEmailVerification(user, name, roleCode);
+                        }
+                    } else {
+                        btnSignUp.setEnabled(true);
+                        Toast.makeText(SignUpActivity.this, "Authentication failed: " + task.getException().getMessage(),
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    private void sendEmailVerification(FirebaseUser user, String name, String roleCode) {
+        user.sendEmailVerification()
+                .addOnCompleteListener(this, task -> {
+                    if (task.isSuccessful()) {
+                        saveUserToDatabase(user.getUid(), name, user.getEmail(), roleCode);
+                        Toast.makeText(SignUpActivity.this,
+                                "Verification email sent to " + user.getEmail() + ". Please verify and then login.",
+                                Toast.LENGTH_LONG).show();
+                        mAuth.signOut();
+                        startActivity(new Intent(SignUpActivity.this, LoginActivity.class));
+                        finish();
+                    } else {
+                        btnSignUp.setEnabled(true);
+                        Toast.makeText(SignUpActivity.this,
+                                "Failed to send verification email.",
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    private void saveUserToDatabase(String userId, String name, String email, String roleCode) {
+        String role = "student";
+        if (roleCode.equals("tunus") || roleCode.equals("ring") || roleCode.equals("sihhiye")) {
+            role = "driver_" + roleCode;
+        } else if (roleCode.startsWith("driver_")) {
+            role = roleCode;
+        }
+
+        Map<String, Object> userMap = new HashMap<>();
+        userMap.put("name", name);
+        userMap.put("email", email);
+        userMap.put("role", role);
+
+        mDatabase.child("users").child(userId).setValue(userMap);
     }
 }

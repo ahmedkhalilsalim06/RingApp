@@ -2,13 +2,17 @@
 <project version="4">
   <component name="DeviceStreaming">
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     <option name="defaultDeviceApplied" value="true" />
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
     <option name="deviceSelectionList">
       <list>
         <PersistentDeviceSelectionData>
           <option name="api" value="34" />
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
           <option name="brand" value="google" />
           <option name="codename" value="comet" />
@@ -143,6 +147,8 @@
         </PersistentDeviceSelectionData>
         <PersistentDeviceSelectionData>
           <option name="api" value="34" />
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
           <option name="brand" value="Sony" />
@@ -710,7 +716,10 @@
         </PersistentDeviceSelectionData>
         <PersistentDeviceSelectionData>
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
           <option name="api" value="34" />
           <option name="brand" value="google" />
           <option name="codename" value="comet" />
@@ -747,6 +756,9 @@
           </option>
         </PersistentDeviceSelectionData>
         <PersistentDeviceSelectionData>
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
           <option name="api" value="35" />
           <option name="brand" value="motorola" />
@@ -833,7 +845,10 @@
         </PersistentDeviceSelectionData>
         <PersistentDeviceSelectionData>
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
           <option name="api" value="34" />
           <option name="brand" value="samsung" />
           <option name="codename" value="e1q" />
@@ -870,6 +885,9 @@
           </option>
         </PersistentDeviceSelectionData>
         <PersistentDeviceSelectionData>
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
           <option name="api" value="36" />
           <option name="brand" value="samsung" />
@@ -1162,6 +1180,7 @@
         </PersistentDeviceSelectionData>
         <PersistentDeviceSelectionData>
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
           <option name="accessStatus">
             <list>
               <option value="EULA_NOT_ACCEPTED" />
@@ -1179,6 +1198,8 @@
           <option name="screenY" value="2352" />
         </PersistentDeviceSelectionData>
         <PersistentDeviceSelectionData>
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
           <option name="api" value="34" />
@@ -1362,6 +1383,7 @@
         </PersistentDeviceSelectionData>
         <PersistentDeviceSelectionData>
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
           <option name="accessStatus">
             <list>
               <option value="EULA_NOT_ACCEPTED" />
@@ -1430,6 +1452,8 @@
           <option name="screenY" value="1604" />
         </PersistentDeviceSelectionData>
         <PersistentDeviceSelectionData>
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
           <option name="api" value="31" />
@@ -1668,6 +1692,7 @@
         </PersistentDeviceSelectionData>
         <PersistentDeviceSelectionData>
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
           <option name="accessStatus">
             <list>
               <option value="EULA_NOT_ACCEPTED" />
@@ -1810,6 +1835,8 @@
         <PersistentDeviceSelectionData>
 =======
 >>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
           <option name="api" value="34" />
           <option name="brand" value="google" />
           <option name="codename" value="shiba" />
@@ -1871,6 +1898,7 @@
           <option name="screenY" value="2424" />
         </PersistentDeviceSelectionData>
         <PersistentDeviceSelectionData>
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
           <option name="accessStatus">
             <list>
@@ -1973,6 +2001,8 @@
           <option name="screenX" value="1080" />
           <option name="screenY" value="2400" />
 =======
+=======
+>>>>>>> Stashed changes
           <option name="api" value="34" />
           <option name="brand" value="google" />
           <option name="codename" value="tokay" />
@@ -2025,6 +2055,9 @@
               <option value="dda-default" />
             </list>
           </option>
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         </PersistentDeviceSelectionData>
         <PersistentDeviceSelectionData>
@@ -2040,6 +2073,7 @@
           <option name="screenY" value="2408" />
         </PersistentDeviceSelectionData>
         <PersistentDeviceSelectionData>
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
           <option name="accessStatus">
             <list>
@@ -2113,6 +2147,8 @@
         <PersistentDeviceSelectionData>
 =======
 >>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
           <option name="api" value="33" />
           <option name="brand" value="samsung" />
           <option name="codename" value="y2q" />
@@ -2127,7 +2163,10 @@
       </list>
     </option>
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     <option name="selectedCloudProject" value="device-streaming-c95fa5ae" />
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
   </component>
