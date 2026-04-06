@@ -83,18 +83,20 @@ public class Settings extends AppCompatActivity {
         rgTheme.check(isDarkMode ? R.id.rbDark : R.id.rbLight);
 
         // Setup Spinner
-        String[] languages = {"English", "Turkish", "German", "French"};
-        String[] langCodes = {"en", "tr", "de", "fr"};
+        String[] languages = {"English", "Turkish", "German", "French", "Russian"};
+        String[] langCodes = {"en", "tr", "de", "fr", "ru"};
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, languages);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerLanguage.setAdapter(adapter);
 
+        int selectedIndex = 0;
         for (int i = 0; i < langCodes.length; i++) {
             if (langCodes[i].equals(langCode)) {
-                spinnerLanguage.setSelection(i);
+                selectedIndex = i;
                 break;
             }
         }
+        spinnerLanguage.setSelection(selectedIndex);
 
         // Listeners
         btnLogout.setOnClickListener(v -> {
@@ -112,6 +114,9 @@ public class Settings extends AppCompatActivity {
             if (dark != prefs.getBoolean("dark_mode", false)) {
                 prefs.edit().putBoolean("dark_mode", dark).apply();
                 AppCompatDelegate.setDefaultNightMode(dark ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO);
+                // Restart to apply theme and map style
+                finish();
+                startActivity(getIntent());
             }
         });
 
@@ -121,9 +126,12 @@ public class Settings extends AppCompatActivity {
                 String selected = langCodes[position];
                 if (!selected.equals(prefs.getString("language", "en"))) {
                     prefs.edit().putString("language", selected).apply();
-                    // Force activity restart for language
+                    updateLocale(selected);
+                    // Force restart to apply language
+                    Intent refresh = new Intent(Settings.this, Settings.class);
+                    refresh.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(refresh);
                     finish();
-                    startActivity(getIntent());
                 }
             }
             @Override public void onNothingSelected(AdapterView<?> parent) {}
