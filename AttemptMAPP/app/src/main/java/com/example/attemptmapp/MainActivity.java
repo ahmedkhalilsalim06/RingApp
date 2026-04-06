@@ -32,6 +32,8 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
@@ -87,6 +89,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private final ExecutorService executorService = Executors.newFixedThreadPool(2);
 
     private EditText etSearch;
+    private RecyclerView rvSearchResults;
+    private SearchSystem searchSystem;
     private ImageButton btnSettings, btnHome, btnFavorites;
     private Marker activeMarker;
     private BottomSheetDialog currentBottomSheet;
@@ -345,16 +349,25 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void bindViews() {
         etSearch = findViewById(R.id.etSearch);
+        rvSearchResults = findViewById(R.id.rvSearchResults);
         btnHome = findViewById(R.id.btnHome);
         btnFavorites = findViewById(R.id.btnFavorites);
         btnSettings = findViewById(R.id.btnSettings);
     }
 
     private void setupButtons() {
-        btnHome.setOnClickListener(v -> { if (mMap != null) mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(BILKENT_UNIVERSITY, DEFAULT_ZOOM)); });
-        btnFavorites.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, FavoritesActivity.class)));
-        btnSettings.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, Settings.class)));
-        etSearch.setOnEditorActionListener((v, actionId, event) -> { searchForLocation(etSearch.getText().toString().trim()); return true; });
+        btnHome.setOnClickListener(v -> {
+            if (searchSystem != null) searchSystem.clearAndHide();
+            if (mMap != null) mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(BILKENT_UNIVERSITY, DEFAULT_ZOOM));
+        });
+        btnFavorites.setOnClickListener(v -> {
+            if (searchSystem != null) searchSystem.clearAndHide();
+            startActivity(new Intent(MainActivity.this, FavoritesActivity.class));
+        });
+        btnSettings.setOnClickListener(v -> {
+            if (searchSystem != null) searchSystem.clearAndHide();
+            startActivity(new Intent(MainActivity.this, Settings.class));
+        });
     }
 
     @Override
@@ -382,7 +395,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    private LatLng getLatLngForStop(String stopName) {
+    public LatLng getLatLngForStop(String stopName) {
         if ("Dorm 91".equals(stopName)) return STOP_DORM91;
         if ("Dorm 92".equals(stopName)) return STOP_DORM92;
         if ("Mescit bus stop".equals(stopName)) return STOP_MESCIT;
@@ -395,6 +408,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
         mMap = googleMap; isMapReady = true;
+
+        searchSystem = new SearchSystem(this, etSearch, rvSearchResults, stopSchedules, mMap);
+
         mMap.setPadding(0, 220, 0, 160);
         mMap.getUiSettings().setZoomControlsEnabled(true);
         mMap.getUiSettings().setMyLocationButtonEnabled(true);
@@ -405,14 +421,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             if (currentBottomSheet != null && currentBottomSheet.isShowing()) {
                 currentBottomSheet.dismiss();
             }
-            executorService.execute(() -> {
-                String address = getAddressFromLatLng(latLng);
-                runOnUiThread(() -> dropPin(latLng, "Dropped Pin", address));
-            });
         });
 
         addBilkentBusStops();
         startStudentListening();
+        checkShowStopIntent(getIntent());
     }
 
     private void addBilkentBusStops() {
@@ -429,7 +442,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
     }
 
-    private void showBusStopBottomSheet(String stopName) {
+    public void showBusStopBottomSheet(String stopName) {
         if (userRole.startsWith("driver_")) return;
         
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_bus_stop, null);
@@ -569,64 +582,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private String getApiKey() { try { return getPackageManager().getApplicationInfo(getPackageName(), PackageManager.GET_META_DATA).metaData.getString("com.google.android.geo.API_KEY"); } catch (Exception e) { return null; } }
-    private void searchForLocation(String q) { 
-        if (q.isEmpty()) return; 
-        hideKeyboard(); 
-        
-        String queryLower = q.toLowerCase();
-        for (String stopName : stopSchedules.keySet()) {
-            if (stopName.toLowerCase().contains(queryLower)) {
-                LatLng pos = getLatLngForStop(stopName);
-                if (pos != null) {
-                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(pos, 17f));
-                    showBusStopBottomSheet(stopName);
-                    return;
-                }
-            }
-        }
 
-        executorService.execute(() -> {
-            try { 
-                List<Address> r = new Geocoder(this, Locale.getDefault()).getFromLocationName(q, 1); 
-                if (r != null && !r.isEmpty()) { 
-                    LatLng p = new LatLng(r.get(0).getLatitude(), r.get(0).getLongitude()); 
-                    String address = r.get(0).getAddressLine(0);
-                    runOnUiThread(() -> { dropPin(p, q, address); mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(p, DEFAULT_ZOOM)); });
-                } 
-            } catch (IOException ignored) {} 
-        });
-    }
-    private void dropPin(LatLng p, String t, String s) { 
-        if (activeMarker != null) activeMarker.remove(); 
-        activeMarker = mMap.addMarker(new MarkerOptions().position(p).title(t).snippet(s).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))); 
-        calculateDirections(p); 
-    }
-    private void calculateDirections(LatLng d) { 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return;
-        locationClient.getLastLocation().addOnSuccessListener(l -> { 
-            if (l != null) { 
-                String u = "https://maps.googleapis.com/maps/api/directions/json?origin=" + l.getLatitude() + "," + l.getLongitude() + "&destination=" + d.latitude + "," + d.longitude + "&mode=" + travelMode + "&key=" + getApiKey(); 
-                httpClient.newCall(new Request.Builder().url(u).build()).enqueue(new Callback() { 
-                    @Override public void onFailure(@NonNull Call c, @NonNull IOException e) {} 
-                    @Override public void onResponse(@NonNull Call c, @NonNull Response r) throws IOException { 
-                        if (r.isSuccessful() && r.body() != null) { 
-                            try { 
-                                List<LatLng> p = PolyUtil.decode(new JSONObject(r.body().string()).getJSONArray("routes").getJSONObject(0).getJSONObject("overview_polyline").getString("points")); 
-                                runOnUiThread(() -> { if (currentPolyline != null) currentPolyline.remove(); currentPolyline = mMap.addPolyline(new PolylineOptions().addAll(p).color(Color.BLUE).width(12)); }); 
-                            } catch (Exception ignored) {} 
-                        } 
-                    } 
-                }); 
-            } 
-        }); 
-    }
-    private String getAddressFromLatLng(LatLng l) { 
-        try { List<Address> adds = new Geocoder(this, Locale.getDefault()).getFromLocation(l.latitude, l.longitude, 1); if (adds != null && !adds.isEmpty()) return adds.get(0).getAddressLine(0); } catch (Exception e) { return "Unknown"; } return "Unknown"; 
-    }
     private boolean locationPermissionGranted() { return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED; }
     private void askForLocationPermission() { ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, PERMISSION_REQUEST_CODE); }
     private void enableLocationOnMap() { if (mMap != null && locationPermissionGranted()) { try { mMap.setMyLocationEnabled(true); } catch (SecurityException ignored) {} } }
-    private void hideKeyboard() { InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE); View view = getCurrentFocus(); if (view != null && imm != null) { imm.hideSoftInputFromWindow(view.getWindowToken(), 0); view.clearFocus(); } }
+    public void hideKeyboard() { InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE); View view = getCurrentFocus(); if (view != null && imm != null) { imm.hideSoftInputFromWindow(view.getWindowToken(), 0); view.clearFocus(); } }
     @Override public void onRequestPermissionsResult(int r, @NonNull String[] p, @NonNull int[] g) { super.onRequestPermissionsResult(r, p, g); if (r == PERMISSION_REQUEST_CODE && g.length > 0 && g[0] == PackageManager.PERMISSION_GRANTED) enableLocationOnMap(); }
     @Override protected void onDestroy() { super.onDestroy(); if (trackerHandler != null && trackerRunnable != null) trackerHandler.removeCallbacks(trackerRunnable); executorService.shutdown(); }
 }
