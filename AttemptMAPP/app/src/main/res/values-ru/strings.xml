@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">AttemptMAPP</string>
+    <string name="settings">Настройки</string>
+    <string name="notifications">Уведомления</string>
+    <string name="bus_alerts">Оповещения о расписании</string>
+    <string name="account_info">Информация об аккаунте</string>
+    <string name="email">Электронная почта</string>
+    <string name="password">Пароль</string>
+    <string name="change">Изменить</string>
+    <string name="app_theme">Тема приложения</string>
+    <string name="light">Светлая</string>
+    <string name="dark">Темная</string>
+    <string name="language">Язык</string>
+    <string name="privacy_policy">Политика конфиденциальности</string>
+    <string name="about_app">О приложении</string>
+    <string name="logout">Выйти</string>
+    <string name="back_to_map">Назад к карте</string>
+</resources>
