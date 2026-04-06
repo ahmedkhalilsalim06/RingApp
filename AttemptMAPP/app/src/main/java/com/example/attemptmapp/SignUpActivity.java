@@ -20,7 +20,7 @@ import java.util.Map;
 
 public class SignUpActivity extends AppCompatActivity {
 
-    private EditText etName, etEmail, etPassword, etConfirmPassword, etSignUpCode;
+    private EditText etName, etEmail, etPassword, etConfirmPassword;
     private Button btnSignUp;
     private TextView tvLogin;
     private FirebaseAuth mAuth;
@@ -38,7 +38,6 @@ public class SignUpActivity extends AppCompatActivity {
         etEmail = findViewById(R.id.etEmail);
         etPassword = findViewById(R.id.etPassword);
         etConfirmPassword = findViewById(R.id.etConfirmPassword);
-        etSignUpCode = findViewById(R.id.etSignUpCode);
         btnSignUp = findViewById(R.id.btnSignUp);
         tvLogin = findViewById(R.id.tvLogin);
 
@@ -57,9 +56,8 @@ public class SignUpActivity extends AppCompatActivity {
         String email = etEmail.getText().toString().trim();
         String password = etPassword.getText().toString().trim();
         String confirmPassword = etConfirmPassword.getText().toString().trim();
-        String roleCode = etSignUpCode.getText().toString().trim().toLowerCase();
 
-        if (TextUtils.isEmpty(name) || TextUtils.isEmpty(email) || TextUtils.isEmpty(password) || TextUtils.isEmpty(roleCode)) {
+        if (TextUtils.isEmpty(name) || TextUtils.isEmpty(email) || TextUtils.isEmpty(password)) {
             Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show();
             return;
         }
@@ -81,7 +79,7 @@ public class SignUpActivity extends AppCompatActivity {
                     if (task.isSuccessful()) {
                         FirebaseUser user = mAuth.getCurrentUser();
                         if (user != null) {
-                            sendEmailVerification(user, name, roleCode);
+                            sendEmailVerification(user, name);
                         }
                     } else {
                         btnSignUp.setEnabled(true);
@@ -91,11 +89,11 @@ public class SignUpActivity extends AppCompatActivity {
                 });
     }
 
-    private void sendEmailVerification(FirebaseUser user, String name, String roleCode) {
+    private void sendEmailVerification(FirebaseUser user, String name) {
         user.sendEmailVerification()
                 .addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
-                        saveUserToDatabase(user.getUid(), name, user.getEmail(), roleCode);
+                        saveUserToDatabase(user.getUid(), name, user.getEmail());
                         Toast.makeText(SignUpActivity.this,
                                 "Verification email sent to " + user.getEmail() + ". Please verify and then login.",
                                 Toast.LENGTH_LONG).show();
@@ -111,13 +109,9 @@ public class SignUpActivity extends AppCompatActivity {
                 });
     }
 
-    private void saveUserToDatabase(String userId, String name, String email, String roleCode) {
+    private void saveUserToDatabase(String userId, String name, String email) {
+        // Since this is the Student Sign-Up page, all new users are "student"
         String role = "student";
-        if (roleCode.equals("tunus") || roleCode.equals("ring") || roleCode.equals("sihhiye")) {
-            role = "driver_" + roleCode;
-        } else if (roleCode.startsWith("driver_")) {
-            role = roleCode;
-        }
 
         Map<String, Object> userMap = new HashMap<>();
         userMap.put("name", name);
