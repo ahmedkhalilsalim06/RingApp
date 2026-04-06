@@ -11,6 +11,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 //aga was here
+//Oktay was here
 public class LoginActivity extends AppCompatActivity {
 
     private EditText etLoginCode;
