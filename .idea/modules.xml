@@ -3,6 +3,12 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/RingApp.iml" filepath="$PROJECT_DIR$/.idea/RingApp.iml" />
+<<<<<<< Updated upstream
+=======
+      <module fileurl="file://$PROJECT_DIR$/AttemptMAPP/app/src/androidTest/androidTest.iml" filepath="$PROJECT_DIR$/AttemptMAPP/app/src/androidTest/androidTest.iml" />
+      <module fileurl="file://$PROJECT_DIR$/AttemptMAPP/app/src/main/main.iml" filepath="$PROJECT_DIR$/AttemptMAPP/app/src/main/main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/AttemptMAPP/app/src/test/test.iml" filepath="$PROJECT_DIR$/AttemptMAPP/app/src/test/test.iml" />
+>>>>>>> Stashed changes
     </modules>
   </component>
 </project>

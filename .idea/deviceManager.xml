@@ -4,10 +4,13 @@
     <option name="columnSorters">
       <list>
         <ColumnSorterState>
+<<<<<<< Updated upstream
           <option name="column" value="Type" />
           <option name="order" value="DESCENDING" />
         </ColumnSorterState>
         <ColumnSorterState>
+=======
+>>>>>>> Stashed changes
           <option name="column" value="Name" />
           <option name="order" value="ASCENDING" />
         </ColumnSorterState>
