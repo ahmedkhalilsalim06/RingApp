@@ -437,7 +437,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         mMap.setOnMarkerClickListener(marker -> {
             String title = marker.getTitle();
             if (title != null && stopSchedules.containsKey(title)) { showBusStopBottomSheet(title); return true; }
-            if (activeMarker != null && marker.equals(activeMarker)) { activeMarker.remove(); activeMarker = null; if (currentPolyline != null) currentBusPolyline.remove(); return true; }
+            if (activeMarker != null && marker.equals(activeMarker)) { 
+                activeMarker.remove(); 
+                activeMarker = null; 
+                if (currentBusPolyline != null) currentBusPolyline.remove(); 
+                return true; 
+            }
             marker.showInfoWindow(); return false;
         });
     }
@@ -535,12 +540,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         currentBottomSheet = new BottomSheetDialog(this);
         currentBottomSheet.setContentView(view);
         
-        View bottomSheetInternal = currentBottomSheet.findViewById(com.google.android.material.R.id.design_bottom_sheet);
-        if (bottomSheetInternal != null) {
-            bottomSheetInternal.setBackgroundColor(Color.TRANSPARENT);
-            ViewGroup.LayoutParams params = bottomSheetInternal.getLayoutParams();
-            params.width = ViewGroup.LayoutParams.MATCH_PARENT;
-            bottomSheetInternal.setLayoutParams(params);
+        // Remove the problematic background fix or use a safer version
+        Window window = currentBottomSheet.getWindow();
+        if (window != null) {
+            window.findViewById(com.google.android.material.R.id.design_bottom_sheet)
+                  .setBackgroundResource(android.R.color.transparent);
         }
         
         currentBottomSheet.show();

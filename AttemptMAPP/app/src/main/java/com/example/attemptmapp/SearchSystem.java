@@ -12,6 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.attemptmapp.R;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.model.LatLng;
@@ -37,7 +38,7 @@ public class SearchSystem {
         this.stopSchedules = stopSchedules;
         this.mMap = mMap;
 
-        this.rvSearchResults.setLayoutManager(new LinearLayoutManager(activity));
+        this.rvSearchResults.setLayoutManager(new LinearLayoutManager(activity.getApplicationContext()));
         this.adapter = new SearchAdapter();
         this.rvSearchResults.setAdapter(adapter);
 
