@@ -17,13 +17,23 @@
         android:textStyle="bold" />
 
     <EditText
-        android:id="@+id/etLoginCode"
+        android:id="@+id/etEmail"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_marginBottom="12dp"
+        android:background="@android:drawable/editbox_background"
+        android:hint="Email"
+        android:inputType="textEmailAddress"
+        android:padding="12dp" />
+
+    <EditText
+        android:id="@+id/etPassword"
         android:layout_width="match_parent"
         android:layout_height="50dp"
         android:layout_marginBottom="16dp"
         android:background="@android:drawable/editbox_background"
-        android:hint="Enter your code (e.g. student)"
-        android:inputType="text"
+        android:hint="Password"
+        android:inputType="textPassword"
         android:padding="12dp" />
 
     <Button
