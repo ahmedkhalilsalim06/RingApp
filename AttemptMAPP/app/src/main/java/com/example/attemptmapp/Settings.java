@@ -59,7 +59,9 @@ public class Settings extends AppCompatActivity {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setDisplayShowHomeEnabled(true);
         }
-        toolbar.setNavigationOnClickListener(v -> finish());
+        
+        // Fix: Use a dedicated method to handle navigation back to MainActivity
+        toolbar.setNavigationOnClickListener(v -> navigateBack());
 
         // Initialize Views
         tvEmail = findViewById(R.id.tvSettingsEmail);
@@ -114,9 +116,8 @@ public class Settings extends AppCompatActivity {
             if (dark != prefs.getBoolean("dark_mode", false)) {
                 prefs.edit().putBoolean("dark_mode", dark).apply();
                 AppCompatDelegate.setDefaultNightMode(dark ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO);
-                // Restart to apply theme and map style
-                finish();
-                startActivity(getIntent());
+                // Restart to apply theme
+                recreate();
             }
         });
 
@@ -127,11 +128,8 @@ public class Settings extends AppCompatActivity {
                 if (!selected.equals(prefs.getString("language", "en"))) {
                     prefs.edit().putString("language", selected).apply();
                     updateLocale(selected);
-                    // Force restart to apply language
-                    Intent refresh = new Intent(Settings.this, Settings.class);
-                    refresh.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                    startActivity(refresh);
-                    finish();
+                    // Important: When language changes, we recreate the activity
+                    recreate();
                 }
             }
             @Override public void onNothingSelected(AdapterView<?> parent) {}
@@ -150,9 +148,23 @@ public class Settings extends AppCompatActivity {
         res.updateConfiguration(conf, res.getDisplayMetrics());
     }
 
+    private void navigateBack() {
+        // Fix: Instead of just finish(), we explicitly start MainActivity to ensure correct back stack
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        startActivity(intent);
+        finish();
+    }
+
+    @Override
+    public void onBackPressed() {
+        // Handle physical back button same as toolbar back
+        navigateBack();
+    }
+
     @Override
     public boolean onSupportNavigateUp() {
-        onBackPressed();
+        navigateBack();
         return true;
     }
 }
