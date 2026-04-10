@@ -5,7 +5,6 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -26,25 +25,23 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class LoginActivity extends AppCompatActivity {
-
-    private EditText etEmail, etPassword;
-    private Button btnLogin;
-    private TextView tvSignUp;
-    private FirebaseAuth mAuth;
-    private DatabaseReference mDatabase;
+    // Instance variables
+    private EditText emailField, passwordField;
+    private Button loginButton;
+    private TextView signUpText;
+    private FirebaseAuth auth;
+    private DatabaseReference database;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        mAuth = FirebaseAuth.getInstance();
-        mDatabase = FirebaseDatabase.getInstance("https://bilkent-bus-tracker-default-rtdb.europe-west1.firebasedatabase.app/").getReference();
+        // Initialize firebase
+        auth = FirebaseAuth.getInstance();
+        database = FirebaseDatabase.getInstance("https://bilkent-bus-tracker-default-rtdb.europe-west1.firebasedatabase.app/").getReference();
 
-        // RUN SETUP ONCE IF NEEDED (Uncomment, run app once, then re-comment):
-        // setupDriverAccounts();
-
-        FirebaseUser currentUser = mAuth.getCurrentUser();
-        // Drivers (@bilkent.edu.tr) don't need verification check on resume
+        // Check if user is already logged in
+        FirebaseUser currentUser = auth.getCurrentUser();
         if (currentUser != null && (currentUser.isEmailVerified() || (currentUser.getEmail() != null && currentUser.getEmail().endsWith("@bilkent.edu.tr")))) {
             fetchUserRoleAndStartMain(currentUser.getUid());
             return;
@@ -52,20 +49,24 @@ public class LoginActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_login);
 
-        etEmail = findViewById(R.id.etEmail);
-        etPassword = findViewById(R.id.etPassword);
-        btnLogin = findViewById(R.id.btnLogin);
-        tvSignUp = findViewById(R.id.tvSignUp);
+        // Set up the UI elements
+        emailField = findViewById(R.id.emailField);
+        passwordField = findViewById(R.id.passwordField);
+        loginButton = findViewById(R.id.loginButton);
+        signUpText = findViewById(R.id.signUpText);
 
-        btnLogin.setOnClickListener(v -> {
+        // Log in button listener
+        loginButton.setOnClickListener(v -> {
             loginUser();
         });
 
-        tvSignUp.setOnClickListener(v -> {
+        // Sign up button listener
+        signUpText.setOnClickListener(v -> {
             startActivity(new Intent(LoginActivity.this, SignUpActivity.class));
         });
     }
 
+    // Creates driver accounts and then stores them in the database
     private void setupDriverAccounts() {
         String[][] drivers = {
                 {"tunus@bilkent.edu.tr", "tunus123", "driver_tunus", "Tunus Driver"},
@@ -79,18 +80,19 @@ public class LoginActivity extends AppCompatActivity {
             String role = driver[2];
             String name = driver[3];
 
-            mAuth.createUserWithEmailAndPassword(email, password)
+            // Stores the driver accounts in the database
+            auth.createUserWithEmailAndPassword(email, password)
                     .addOnCompleteListener(task -> {
                         if (task.isSuccessful()) {
-                            FirebaseUser user = mAuth.getCurrentUser();
+                            FirebaseUser user = auth.getCurrentUser();
                             if (user != null) {
                                 Map<String, Object> userMap = new HashMap<>();
                                 userMap.put("name", name);
                                 userMap.put("email", email);
                                 userMap.put("role", role);
-                                mDatabase.child("users").child(user.getUid()).setValue(userMap);
+                                database.child("users").child(user.getUid()).setValue(userMap);
                                 Log.d("Setup", "Created: " + email);
-                                mAuth.signOut(); 
+                                auth.signOut();
                             }
                         } else {
                             Log.e("Setup", "Failed for " + email + ": " + task.getException().getMessage());
@@ -99,41 +101,48 @@ public class LoginActivity extends AppCompatActivity {
         }
     }
 
+    // Handles log in functionality
     private void loginUser() {
-        String email = etEmail.getText().toString().trim();
-        String password = etPassword.getText().toString().trim();
+        String email = emailField.getText().toString().trim();
+        String password = passwordField.getText().toString().trim();
 
+        // Check if both fields are filled
         if (TextUtils.isEmpty(email) || TextUtils.isEmpty(password)) {
             Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        btnLogin.setEnabled(false);
+        loginButton.setEnabled(false);
 
-        mAuth.signInWithEmailAndPassword(email, password)
+        // Attempt to log in
+        auth.signInWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
-                        FirebaseUser user = mAuth.getCurrentUser();
+                        // Check if the user is verified (email verification)
+                        FirebaseUser user = auth.getCurrentUser();
                         if (user != null) {
-                            // Drivers (@bilkent.edu.tr) don't need verification, others do
                             if (user.isEmailVerified() || (user.getEmail() != null && user.getEmail().endsWith("@bilkent.edu.tr"))) {
+                                // Start the app
                                 fetchUserRoleAndStartMain(user.getUid());
                             } else {
-                                btnLogin.setEnabled(true);
+                                // Display error message
+                                loginButton.setEnabled(true);
                                 Toast.makeText(this, "Please verify your email first.", Toast.LENGTH_LONG).show();
-                                mAuth.signOut();
+                                auth.signOut();
                             }
                         }
                     } else {
-                        btnLogin.setEnabled(true);
+                        // Display error message
+                        loginButton.setEnabled(true);
                         Toast.makeText(LoginActivity.this, "Authentication failed: " + task.getException().getMessage(),
                                 Toast.LENGTH_SHORT).show();
                     }
                 });
     }
 
+    // Gets the user's role from the database, stores it in shared preferences, and then starts main map screen
     private void fetchUserRoleAndStartMain(String userId) {
-        mDatabase.child("users").child(userId).addListenerForSingleValueEvent(new ValueEventListener() {
+        database.child("users").child(userId).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 String role = snapshot.child("role").getValue(String.class);
@@ -148,9 +157,10 @@ public class LoginActivity extends AppCompatActivity {
                 finish();
             }
 
+            // Displays error message if there's an error with fetching the data
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                btnLogin.setEnabled(true);
+                loginButton.setEnabled(true);
                 Toast.makeText(LoginActivity.this, "Database error: " + error.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });

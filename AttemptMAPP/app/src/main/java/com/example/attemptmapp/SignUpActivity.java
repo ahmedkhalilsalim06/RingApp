@@ -19,89 +19,102 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class SignUpActivity extends AppCompatActivity {
-
-    private EditText etName, etEmail, etPassword, etConfirmPassword;
-    private Button btnSignUp;
-    private TextView tvLogin;
-    private FirebaseAuth mAuth;
-    private DatabaseReference mDatabase;
+    // Instance variables
+    private EditText nameField, emailField, passwordField, confirmPasswordField;
+    private Button signUpButton;
+    private TextView loginText;
+    private FirebaseAuth auth;
+    private DatabaseReference database;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_signup);
 
-        mAuth = FirebaseAuth.getInstance();
-        mDatabase = FirebaseDatabase.getInstance("https://bilkent-bus-tracker-default-rtdb.europe-west1.firebasedatabase.app/").getReference();
+        // Initialize firebase
+        auth = FirebaseAuth.getInstance();
+        database = FirebaseDatabase.getInstance("https://bilkent-bus-tracker-default-rtdb.europe-west1.firebasedatabase.app/").getReference();
 
-        etName = findViewById(R.id.etName);
-        etEmail = findViewById(R.id.etEmail);
-        etPassword = findViewById(R.id.etPassword);
-        etConfirmPassword = findViewById(R.id.etConfirmPassword);
-        btnSignUp = findViewById(R.id.btnSignUp);
-        tvLogin = findViewById(R.id.tvLogin);
+        // Initialize the UI components
+        nameField = findViewById(R.id.nameField);
+        emailField = findViewById(R.id.emailField);
+        passwordField = findViewById(R.id.passwordField);
+        confirmPasswordField = findViewById(R.id.confirmPasswordField);
+        signUpButton = findViewById(R.id.signUpButton);
+        loginText = findViewById(R.id.loginText);
 
-        btnSignUp.setOnClickListener(v -> {
+        // Listener for the sign up button
+        signUpButton.setOnClickListener(v -> {
             signUpUser();
         });
 
-        tvLogin.setOnClickListener(v -> {
+        // Listener for login button
+        loginText.setOnClickListener(v -> {
             startActivity(new Intent(SignUpActivity.this, LoginActivity.class));
             finish();
         });
     }
 
+    // Handles sign up functionality
     private void signUpUser() {
-        String name = etName.getText().toString().trim();
-        String email = etEmail.getText().toString().trim();
-        String password = etPassword.getText().toString().trim();
-        String confirmPassword = etConfirmPassword.getText().toString().trim();
+        String name = nameField.getText().toString().trim();
+        String email = emailField.getText().toString().trim();
+        String password = passwordField.getText().toString().trim();
+        String confirmPassword = confirmPasswordField.getText().toString().trim();
 
+        // Check if all the fields are filled
         if (TextUtils.isEmpty(name) || TextUtils.isEmpty(email) || TextUtils.isEmpty(password)) {
             Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show();
             return;
         }
 
+        // Check if the password and confirm password match
         if (!password.equals(confirmPassword)) {
             Toast.makeText(this, "Passwords do not match", Toast.LENGTH_SHORT).show();
             return;
         }
 
+        // Password must be at least 6 characters long
         if (password.length() < 6) {
             Toast.makeText(this, "Password should be at least 6 characters", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        btnSignUp.setEnabled(false);
+        signUpButton.setEnabled(false);
 
-        mAuth.createUserWithEmailAndPassword(email, password)
+        // Try to create the new account
+        auth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
-                        FirebaseUser user = mAuth.getCurrentUser();
+                        FirebaseUser user = auth.getCurrentUser();
                         if (user != null) {
                             sendEmailVerification(user, name);
                         }
                     } else {
-                        btnSignUp.setEnabled(true);
+                        // Display the error message to user
+                        signUpButton.setEnabled(true);
                         Toast.makeText(SignUpActivity.this, "Authentication failed: " + task.getException().getMessage(),
                                 Toast.LENGTH_SHORT).show();
                     }
                 });
     }
 
+    // Sends verification email to the user
     private void sendEmailVerification(FirebaseUser user, String name) {
         user.sendEmailVerification()
                 .addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
+                        // If the email was sent successfully, save the user to the database
                         saveUserToDatabase(user.getUid(), name, user.getEmail());
                         Toast.makeText(SignUpActivity.this,
                                 "Verification email sent to " + user.getEmail() + ". Please verify and then login.",
                                 Toast.LENGTH_LONG).show();
-                        mAuth.signOut();
+                        auth.signOut();
                         startActivity(new Intent(SignUpActivity.this, LoginActivity.class));
                         finish();
                     } else {
-                        btnSignUp.setEnabled(true);
+                        // Display error
+                        signUpButton.setEnabled(true);
                         Toast.makeText(SignUpActivity.this,
                                 "Failed to send verification email.",
                                 Toast.LENGTH_SHORT).show();
@@ -109,8 +122,8 @@ public class SignUpActivity extends AppCompatActivity {
                 });
     }
 
+    // Saves the user to the database
     private void saveUserToDatabase(String userId, String name, String email) {
-        // Since this is the Student Sign-Up page, all new users are "student"
         String role = "student";
 
         Map<String, Object> userMap = new HashMap<>();
@@ -118,6 +131,6 @@ public class SignUpActivity extends AppCompatActivity {
         userMap.put("email", email);
         userMap.put("role", role);
 
-        mDatabase.child("users").child(userId).setValue(userMap);
+        database.child("users").child(userId).setValue(userMap);
     }
 }

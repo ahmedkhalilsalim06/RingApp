@@ -17,7 +17,7 @@
         android:textStyle="bold" />
 
     <EditText
-        android:id="@+id/etName"
+        android:id="@+id/nameField"
         android:layout_width="match_parent"
         android:layout_height="50dp"
         android:layout_marginBottom="12dp"
@@ -27,7 +27,7 @@
         android:padding="12dp" />
 
     <EditText
-        android:id="@+id/etEmail"
+        android:id="@+id/emailField"
         android:layout_width="match_parent"
         android:layout_height="50dp"
         android:layout_marginBottom="12dp"
@@ -37,7 +37,7 @@
         android:padding="12dp" />
 
     <EditText
-        android:id="@+id/etPassword"
+        android:id="@+id/passwordField"
         android:layout_width="match_parent"
         android:layout_height="50dp"
         android:layout_marginBottom="12dp"
@@ -47,7 +47,7 @@
         android:padding="12dp" />
 
     <EditText
-        android:id="@+id/etConfirmPassword"
+        android:id="@+id/confirmPasswordField"
         android:layout_width="match_parent"
         android:layout_height="50dp"
         android:layout_marginBottom="16dp"
@@ -57,7 +57,7 @@
         android:padding="12dp" />
 
     <Button
-        android:id="@+id/btnSignUp"
+        android:id="@+id/signUpButton"
         android:layout_width="match_parent"
         android:layout_height="50dp"
         android:backgroundTint="#4285F4"
@@ -65,7 +65,7 @@
         android:textColor="#FFFFFF" />
 
     <TextView
-        android:id="@+id/tvLogin"
+        android:id="@+id/loginText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"

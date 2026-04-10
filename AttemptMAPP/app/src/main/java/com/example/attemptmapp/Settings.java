@@ -25,18 +25,18 @@ import com.google.firebase.auth.FirebaseUser;
 import java.util.Locale;
 
 public class Settings extends AppCompatActivity {
-
-    private TextView tvEmail;
-    private Button btnLogout;
-    private SwitchCompat switchNotifications;
-    private RadioGroup rgTheme;
-    private Spinner spinnerLanguage;
-    private TextView btnChangeEmail, btnChangePassword, btnPrivacyPolicy, btnAbout;
+    // Instance variables
+    private TextView email;
+    private Button logoutButton;
+    private SwitchCompat notificationSwitch;
+    private RadioGroup appThemeRadio;
+    private Spinner languageSpinner;
+    private TextView changeEmailText, changePasswordText, privacyPolicyText, aboutAppText;
     private FirebaseAuth mAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // Apply saved theme and language BEFORE super.onCreate
+        // Apply the saved theme and language BEFORE running super.onCreate
         SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
         
         String langCode = prefs.getString("language", "en");
@@ -49,10 +49,11 @@ public class Settings extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
 
+        // Initialize firebase
         mAuth = FirebaseAuth.getInstance();
         FirebaseUser user = mAuth.getCurrentUser();
 
-        // Initialize Toolbar as Back Button
+        // Initialize the Toolbar with the back button
         Toolbar toolbar = findViewById(R.id.settingsToolbar);
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
@@ -60,37 +61,39 @@ public class Settings extends AppCompatActivity {
             getSupportActionBar().setDisplayShowHomeEnabled(true);
         }
         
-        // Fix: Use a dedicated method to handle navigation back to MainActivity
+        // Handles navigation back to the main map screen
         toolbar.setNavigationOnClickListener(v -> navigateBack());
 
         // Initialize Views
-        tvEmail = findViewById(R.id.tvSettingsEmail);
-        btnLogout = findViewById(R.id.btnSettingsLogout);
-        switchNotifications = findViewById(R.id.switchNotifications);
-        rgTheme = findViewById(R.id.rgTheme);
-        spinnerLanguage = findViewById(R.id.spinnerLanguage);
-        btnChangeEmail = findViewById(R.id.btnChangeEmail);
-        btnChangePassword = findViewById(R.id.btnChangePassword);
-        btnPrivacyPolicy = findViewById(R.id.btnPrivacyPolicy);
-        btnAbout = findViewById(R.id.btnAbout);
+        email = findViewById(R.id.SettingsEmail);
+        logoutButton = findViewById(R.id.logoutButton);
+        notificationSwitch = findViewById(R.id.notificationSwitch);
+        appThemeRadio = findViewById(R.id.themeRadio);
+        languageSpinner = findViewById(R.id.languageSpinner);
+        changeEmailText = findViewById(R.id.changeEmailText);
+        changePasswordText = findViewById(R.id.changePasswordText);
+        privacyPolicyText = findViewById(R.id.privacyPolicyText);
+        aboutAppText = findViewById(R.id.aboutAppText);
 
-        // Load states
+        // Load the states
         if (user != null) {
-            tvEmail.setText(user.getEmail());
+            email.setText(user.getEmail());
         } else {
-            tvEmail.setText(prefs.getString("userEmail", "Not logged in"));
+            email.setText(prefs.getString("userEmail", "Not logged in"));
         }
-        
-        switchNotifications.setChecked(prefs.getBoolean("notifications_enabled", true));
-        rgTheme.check(isDarkMode ? R.id.rbDark : R.id.rbLight);
 
-        // Setup Spinner
-        String[] languages = {"English", "Turkish", "German", "French", "Russian"};
-        String[] langCodes = {"en", "tr", "de", "fr", "ru"};
+        // Set the notifications and theme state based on previously saved preferences
+        notificationSwitch.setChecked(prefs.getBoolean("notifications_enabled", true));
+        appThemeRadio.check(isDarkMode ? R.id.rbDark : R.id.rbLight);
+
+        // Setup the language spinner
+        String[] languages = {"English", "Turkish", "Russian"};
+        String[] langCodes = {"en", "tr", "ru"};
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, languages);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerLanguage.setAdapter(adapter);
+        languageSpinner.setAdapter(adapter);
 
+        // set the initial value of the spinner to the language saved in the preferences
         int selectedIndex = 0;
         for (int i = 0; i < langCodes.length; i++) {
             if (langCodes[i].equals(langCode)) {
@@ -98,47 +101,53 @@ public class Settings extends AppCompatActivity {
                 break;
             }
         }
-        spinnerLanguage.setSelection(selectedIndex);
+        languageSpinner.setSelection(selectedIndex);
 
-        // Listeners
-        btnLogout.setOnClickListener(v -> {
+        // *Listeners*
+        logoutButton.setOnClickListener(v -> {
+            // Handles logout functionality
             mAuth.signOut();
             prefs.edit().clear().apply();
             startActivity(new Intent(this, LoginActivity.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK));
             finish();
         });
 
-        switchNotifications.setOnCheckedChangeListener((b, isChecked) -> 
+        // Handles the notification state change (changes boolean state)
+        notificationSwitch.setOnCheckedChangeListener((b, isChecked) ->
                 prefs.edit().putBoolean("notifications_enabled", isChecked).apply());
 
-        rgTheme.setOnCheckedChangeListener((group, checkedId) -> {
+        // Handles theme change and applies the new theme
+        appThemeRadio.setOnCheckedChangeListener((group, checkedId) -> {
             boolean dark = (checkedId == R.id.rbDark);
             if (dark != prefs.getBoolean("dark_mode", false)) {
                 prefs.edit().putBoolean("dark_mode", dark).apply();
                 AppCompatDelegate.setDefaultNightMode(dark ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO);
-                // Restart to apply theme
+                // Restart to apply the theme
                 recreate();
             }
         });
 
-        spinnerLanguage.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+        // Handles language change and then applies the newly selected language
+        languageSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 String selected = langCodes[position];
                 if (!selected.equals(prefs.getString("language", "en"))) {
                     prefs.edit().putString("language", selected).apply();
                     updateLocale(selected);
-                    // Important: When language changes, we recreate the activity
+                    // restart the activity to show changes
                     recreate();
                 }
             }
             @Override public void onNothingSelected(AdapterView<?> parent) {}
         });
 
-        btnChangeEmail.setOnClickListener(v -> Toast.makeText(this, "Soon...", Toast.LENGTH_SHORT).show());
-        btnChangePassword.setOnClickListener(v -> Toast.makeText(this, "Soon...", Toast.LENGTH_SHORT).show());
+        // Possible future ideas: allow the user to change their email and password
+        changeEmailText.setOnClickListener(v -> Toast.makeText(this, "Soon...", Toast.LENGTH_SHORT).show());
+        changePasswordText.setOnClickListener(v -> Toast.makeText(this, "Soon...", Toast.LENGTH_SHORT).show());
     }
 
+    // Changes the locale based on the selected language to show the UI in that language
     private void updateLocale(String langCode) {
         Locale locale = new Locale(langCode);
         Locale.setDefault(locale);
@@ -148,8 +157,8 @@ public class Settings extends AppCompatActivity {
         res.updateConfiguration(conf, res.getDisplayMetrics());
     }
 
+    // Handles exiting the settings screen and navigation back to the main map screen
     private void navigateBack() {
-        // Fix: Instead of just finish(), we explicitly start MainActivity to ensure correct back stack
         Intent intent = new Intent(this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         startActivity(intent);
@@ -158,12 +167,13 @@ public class Settings extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        // Handle physical back button same as toolbar back
+        // Handles what happens when you press the mobile's back button
         navigateBack();
     }
 
     @Override
     public boolean onSupportNavigateUp() {
+        // Handles what happens when the back button is pressed (top left)
         navigateBack();
         return true;
     }

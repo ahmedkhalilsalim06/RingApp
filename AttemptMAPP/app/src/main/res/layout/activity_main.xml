@@ -32,7 +32,7 @@
         app:layout_constraintBottom_toBottomOf="parent">
 
         <ImageButton
-            android:id="@+id/btnHome"
+            android:id="@+id/homeButton"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
@@ -42,7 +42,7 @@
             android:contentDescription="Home" />
 
         <ImageButton
-            android:id="@+id/btnFavorites"
+            android:id="@+id/favoritesButton"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
@@ -52,7 +52,7 @@
             android:contentDescription="Favorites" />
 
         <ImageButton
-            android:id="@+id/btnSettings"
+            android:id="@+id/settingsButton"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
@@ -64,7 +64,7 @@
 
     <!-- SEARCH RESULTS (Middle layer) -->
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rvSearchResults"
+        android:id="@+id/searchResultsUI"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:background="#FFFFFF"
@@ -99,7 +99,7 @@
                 android:textSize="18sp" />
 
             <EditText
-                android:id="@+id/etSearch"
+                android:id="@+id/searchBar"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:background="@null"

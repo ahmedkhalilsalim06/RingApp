@@ -51,7 +51,7 @@
                     android:textSize="16sp"
                     android:textColor="?android:attr/textColorSecondary"/>
                 <androidx.appcompat.widget.SwitchCompat
-                    android:id="@+id/switchNotifications"
+                    android:id="@+id/notificationSwitch"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_alignParentEnd="true"
@@ -84,14 +84,14 @@
                         android:textStyle="bold"
                         android:textColor="?android:attr/textColorPrimary"/>
                     <TextView
-                        android:id="@+id/tvSettingsEmail"
+                        android:id="@+id/SettingsEmail"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="user@example.com"
                         android:textColor="?android:attr/textColorSecondary"/>
                 </LinearLayout>
                 <TextView
-                    android:id="@+id/btnChangeEmail"
+                    android:id="@+id/changeEmailText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/change"
@@ -122,7 +122,7 @@
                         android:textColor="?android:attr/textColorSecondary"/>
                 </LinearLayout>
                 <TextView
-                    android:id="@+id/btnChangePassword"
+                    android:id="@+id/changePasswordText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/change"
@@ -148,7 +148,7 @@
                 android:layout_marginBottom="12dp"/>
 
             <RadioGroup
-                android:id="@+id/rgTheme"
+                android:id="@+id/themeRadio"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
@@ -179,7 +179,7 @@
                 android:layout_marginBottom="12dp"/>
 
             <Spinner
-                android:id="@+id/spinnerLanguage"
+                android:id="@+id/languageSpinner"
                 android:layout_width="150dp"
                 android:layout_height="40dp"
                 android:background="@android:drawable/btn_dropdown"
@@ -187,7 +187,7 @@
 
             <!-- Links -->
             <TextView
-                android:id="@+id/btnPrivacyPolicy"
+                android:id="@+id/privacyPolicyText"
                 android:layout_width="match_parent"
                 android:layout_height="50dp"
                 android:text="@string/privacy_policy"
@@ -196,7 +196,7 @@
                 android:textColor="?android:attr/textColorPrimary"/>
 
             <TextView
-                android:id="@+id/btnAbout"
+                android:id="@+id/aboutAppText"
                 android:layout_width="match_parent"
                 android:layout_height="50dp"
                 android:text="@string/about_app"
@@ -208,7 +208,7 @@
     </ScrollView>
 
     <Button
-        android:id="@+id/btnSettingsLogout"
+        android:id="@+id/logoutButton"
         android:layout_width="match_parent"
         android:layout_height="55dp"
         android:text="@string/logout"
